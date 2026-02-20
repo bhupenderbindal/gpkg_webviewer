@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeoFilter — GPKG Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<style>
+:root {
+  --bg:      #0d0f12;
+  --panel:   #12151a;
+  --panel2:  #181c23;
+  --panel3:  #1e232c;
+  --border:  #232830;
+  --border2: #2b3140;
+  --accent:  #c8f530;
+  --accent2: #30f5c8;
+  --text:    #dde2e8;
+  --muted:   #546070;
+  --danger:  #f04f30;
+  --sz: 11px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--sz);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* ── Header ──────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+  height: 32px;
+}
+header h1 {
+  font-family: 'Fraunces', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+header .tag {
+  font-size: 0.6rem;
+  color: var(--muted);
+  padding: 1px 4px;
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+}
+.status-bar { margin-left: auto; font-size: 0.65rem; color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.status-bar.active { color: var(--accent2); }
+
+/* ── App body: 3 columns ──────────────────────────── */
+.app-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Col 1: Layer/Upload sidebar ─────────────────── */
+.sidebar {
+  width: 190px;
+  min-width: 130px;
+  max-width: 400px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+}
+.sidebar-content::-webkit-scrollbar { width: 3px; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Col-list grows to fill all available space */
+#colSection {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.col-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+.col-list::-webkit-scrollbar { width: 3px; }
+.col-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* ── Col 2: Filter panel (vertical) ──────────────── */
+.filter-panel-col {
+  width: 220px;
+  min-width: 150px;
+  max-width: 420px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.filter-panel-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 4px;
+}
+.filter-panel-col-head .fp-title {
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.filter-panel-col-actions {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.btn-sm {
+  font-family: inherit;
+  font-size: 0.62rem;
+  padding: 2px 6px;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1px solid var(--border2);
+  background: none;
+  color: var(--muted);
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.btn-sm:hover { color: var(--text); border-color: var(--border2); }
+.btn-sm.accent { background: var(--accent); color: #0d0f12; border-color: var(--accent); font-weight: 700; }
+.btn-sm.accent:hover { opacity: 0.85; }
+.btn-sm.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+.filter-panel-col-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+.filter-panel-col-body::-webkit-scrollbar { width: 3px; }
+.filter-panel-col-body::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.filter-panel-col-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.result-info { font-size: 0.65rem; color: var(--muted); }
+.result-info strong { color: var(--accent); }
+
+.no-filters-msg {
+  font-size: 0.65rem;
+  color: var(--muted);
+  padding: 10px 4px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* ── Filter cards (vertical stacked) ─────────────── */
+.fcard {
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  overflow: visible;
+  flex-shrink: 0;
+}
+.fcard-head {
+  display: flex;
+  align-items: center;
+  padding: 3px 5px;
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+.fcard-colname {
+  flex: 1;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--accent2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fcard-colname.num { color: var(--accent); }
+.type-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent2);
+  flex-shrink: 0;
+}
+.type-dot.num { background: var(--accent); }
+.fcard-remove {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0 1px;
+  transition: color 0.12s;
+}
+.fcard-remove:hover { color: var(--danger); }
+.fcard-body { padding: 4px 5px; }
+
+/* Range inputs */
+.range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.range-inputs input[type=number] {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.68rem;
+  padding: 2px 4px;
+  border-radius: 2px;
+  outline: none;
+  height: 20px;
+}
+.range-inputs input[type=number]:focus { border-color: var(--accent); }
+.range-inputs span { color: var(--muted); font-size: 0.65rem; flex-shrink: 0; }
+
+/* Multi-select trigger */
+.ms-trigger {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  height: 20px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.67rem;
+  color: var(--text);
+  width: 100%;
+  overflow: hidden;
+}
+.ms-trigger:hover { border-color: var(--accent2); }
+.ms-trigger .ms-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.ms-trigger svg { flex-shrink: 0; }
+
+/* Selected values preview */
+.ms-selected-preview {
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.ms-val-tag {
+  background: rgba(48, 245, 200, 0.12);
+  border: 1px solid rgba(48, 245, 200, 0.25);
+  color: var(--accent2);
+  font-size: 0.6rem;
+  padding: 0 3px;
+  border-radius: 2px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ms-val-tag.more {
+  background: rgba(90,96,114,0.15);
+  border-color: var(--border2);
+  color: var(--muted);
+}
+
+/* ── Singleton dropdown ───────────────────────────── */
+.ms-dropdown {
+  position: fixed;
+  z-index: 2000;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  display: none;
+  flex-direction: column;
+  width: 240px;
+  max-height: 280px;
+  overflow: hidden;
+}
+.ms-dropdown.open { display: flex; }
+.ms-dd-search {
+  padding: 4px 5px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.ms-dd-search input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.68rem;
+  padding: 3px 6px;
+  border-radius: 2px;
+  outline: none;
+}
+.ms-dd-search input:focus { border-color: var(--accent2); }
+.ms-dd-actions {
+  display: flex;
+  gap: 3px;
+  padding: 3px 5px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  flex-shrink: 0;
+}
+.ms-dd-actions button {
+  font-family: inherit;
+  font-size: 0.62rem;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.ms-dd-actions button:hover { color: var(--accent); border-color: var(--accent); }
+.ms-dd-count { font-size: 0.6rem; color: var(--muted); margin-left: auto; }
+.ms-dd-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.ms-dd-list::-webkit-scrollbar { width: 3px; }
+.ms-dd-list::-webkit-scrollbar-thumb { background: var(--border2); }
+.ms-dd-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 7px;
+  font-size: 0.68rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  word-break: break-all;
+}
+.ms-dd-list label:hover { background: var(--border); }
+.ms-dd-list input[type=checkbox] { accent-color: var(--accent); flex-shrink: 0; }
+
+/* ── Map area ─────────────────────────────────────── */
+.map-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+#map { flex: 1; min-height: 0; background: #0a0c0f; }
+
+/* Hover tooltip (wider, custom) */
+.geo-tooltip {
+  position: fixed;
+  z-index: 1500;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.7);
+  padding: 6px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text);
+  pointer-events: none;
+  display: none;
+  max-width: 420px;
+  min-width: 200px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.geo-tooltip table { border-collapse: collapse; width: 100%; }
+.geo-tooltip td { padding: 1px 0; vertical-align: top; }
+.geo-tooltip td:first-child {
+  color: var(--muted);
+  padding-right: 8px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.geo-tooltip td:last-child {
+  color: var(--text);
+  word-break: break-word;
+  max-width: 240px;
+}
+
+/* ── Resize handles ───────────────────────────────── */
+.resize-handle-v {
+  position: absolute;
+  right: -3px; top: 0; bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+}
+.resize-handle-v:hover, .resize-handle-v.active { background: var(--accent); opacity: 0.4; border-radius: 3px; }
+
+/* ── Sidebar shared components ───────────────────── */
+.upload-zone {
+  border: 1px dashed var(--border2);
+  border-radius: 3px;
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  flex-shrink: 0;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(200,245,48,0.04); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.upload-zone .icon { font-size: 1.1rem; margin-bottom: 3px; }
+.upload-zone p { font-size: 0.6rem; color: var(--muted); }
+.upload-zone strong { color: var(--accent); font-size: 0.65rem; display: block; margin-bottom: 1px; }
+
+.section-title {
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 3px;
+  flex-shrink: 0;
+}
+.layer-select {
+  width: 100%;
+  background: var(--panel2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.68rem;
+  padding: 3px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23546070' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+  flex-shrink: 0;
+}
+.layer-select:focus { border-color: var(--accent); }
+
+.col-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 0.67rem;
+  transition: background 0.1s;
+}
+.col-item:hover { background: var(--panel3); }
+.col-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; width: 11px; height: 11px; }
+.col-item .col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.col-item .type-badge {
+  font-size: 0.55rem;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.col-item .type-badge.num { color: var(--accent); }
+
+.no-data {
+  padding: 10px 4px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.67rem;
+  line-height: 1.7;
+  flex-shrink: 0;
+}
+.debug-info {
+  font-size: 0.58rem;
+  color: var(--muted);
+  padding: 3px 5px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  word-break: break-all;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+/* ── Basemap selector ─────────────────────────────── */
+.basemap-bar {
+  display: flex;
+  gap: 0;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.basemap-btn {
+  font-family: inherit;
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 0;
+  margin-right: -1px;
+}
+.basemap-btn:first-child { border-radius: 2px 0 0 2px; }
+.basemap-btn:last-child { border-radius: 0 2px 2px 0; margin-right: 0; }
+.basemap-btn.active { background: var(--panel2); color: var(--text); border-color: var(--accent2); z-index: 1; }
+.basemap-btn:hover:not(.active) { color: var(--text); border-color: var(--border2); }
+
+/* ── Overlay ──────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(13,15,18,0.88);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; backdrop-filter: blur(3px);
+}
+.overlay.hidden { display: none; }
+.spinner { text-align: center; color: var(--accent); font-size: 0.8rem; }
+.spinner-ring {
+  width: 30px; height: 30px;
+  border: 2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="overlay" id="overlay">
+  <div class="spinner"><div class="spinner-ring"></div><div id="overlay-msg">Loading…</div></div>
+</div>
+
+<!-- Hover tooltip -->
+<div class="geo-tooltip" id="geoTooltip"></div>
+
+<!-- Singleton dropdown -->
+<div class="ms-dropdown" id="msDropdown">
+  <div class="ms-dd-search"><input type="text" placeholder="Search values…" id="msSearch"></div>
+  <div class="ms-dd-actions">
+    <button id="msAll">All</button>
+    <button id="msNone">None</button>
+    <span class="ms-dd-count" id="msCount"></span>
+  </div>
+  <div class="ms-dd-list" id="msList"></div>
+</div>
+
+<header>
+  <h1>GeoFilter</h1>
+  <span class="tag">.gpkg</span>
+  <div class="status-bar" id="statusBar">No file loaded</div>
+</header>
+
+<div class="app-body">
+
+  <!-- Col 1: Upload + Layer + Column picker -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-content">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".gpkg"/>
+        <div class="icon">📦</div>
+        <strong>Drop .gpkg here</strong>
+        <p>or click to browse</p>
+      </div>
+
+      <div class="no-data" id="noDataMsg">Load a .gpkg file to start.</div>
+
+      <div id="layerSection" style="display:none;flex-shrink:0">
+        <div class="section-title">Layer</div>
+        <select class="layer-select" id="layerSelect"></select>
+      </div>
+
+      <div id="colSection" style="display:none">
+        <div class="section-title">Columns — check to filter</div>
+        <div class="col-list" id="colList"></div>
+      </div>
+
+      <div id="debugInfo" class="debug-info" style="display:none"></div>
+    </div>
+    <div class="resize-handle-v" id="rHandleV1"></div>
+  </div>
+
+  <!-- Col 2: Active filters (vertical) -->
+  <div class="filter-panel-col" id="filterPanelCol">
+    <div class="filter-panel-col-head">
+      <span class="fp-title">Active Filters</span>
+      <div class="filter-panel-col-actions">
+        <button class="btn-sm danger" id="resetBtn" title="Remove all filters" style="display:none">✕ Reset</button>
+        <button class="btn-sm accent" id="applyBtn">⚡ Apply</button>
+      </div>
+    </div>
+    <div class="filter-panel-col-body" id="filterCards">
+      <div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>
+    </div>
+    <div class="filter-panel-col-foot">
+      <span class="result-info" id="resultInfo"></span>
+    </div>
+    <div class="resize-handle-v" id="rHandleV2"></div>
+  </div>
+
+  <!-- Col 3: Map -->
+  <div class="map-col">
+    <div class="basemap-bar">
+      <button class="basemap-btn active" data-layer="carto-dark">Carto Dark</button>
+      <button class="basemap-btn" data-layer="osm">OSM</button>
+      <button class="basemap-btn" data-layer="carto-light">Carto Light</button>
+    </div>
+    <div id="map"></div>
+  </div>
+
+</div>
+
+<script>
+/* ── Globals ──────────────────────────────────────── */
+let db = null, SQL = null;
+let map, geojsonLayer = null;
+let currentLayer = null, geomColumn = 'geom', layerSRID = 4326;
+let projTransform = null;
+let columns = [];
+let activeFilters = {};  // colName -> {type, min, max, values:Set, all:[]}
+let activeDropdownColName = null;
+const msTriggerMap = {};  // colName -> {trigger, previewEl}
+
+/* ── Map ──────────────────────────────────────────── */
+map = L.map('map', { preferCanvas: true });
+map.setView([20, 0], 2);
+
+const baseLayers = {
+  'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+  }),
+  'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 19
+  }),
+  'carto-light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO', maxZoom: 20
+  })
+};
+baseLayers['carto-dark'].addTo(map);
+let currentBasemap = 'carto-dark';
+
+document.querySelectorAll('.basemap-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.dataset.layer;
+    if (key === currentBasemap) return;
+    map.removeLayer(baseLayers[currentBasemap]);
+    baseLayers[key].addTo(map);
+    if (geojsonLayer) geojsonLayer.bringToFront();
+    currentBasemap = key;
+    document.querySelectorAll('.basemap-btn').forEach(b => b.classList.toggle('active', b.dataset.layer === key));
+  });
+});
+
+/* ── Hover tooltip ────────────────────────────────── */
+const tooltip = document.getElementById('geoTooltip');
+
+function showTooltip(props, x, y) {
+  const rows = Object.entries(props)
+    .map(([k, v]) =>
+      `<tr><td>${escHtml(k)}</td><td>${escHtml(String(v ?? ''))}</td></tr>`
+    ).join('');
+  tooltip.innerHTML = `<table>${rows}</table>`;
+  tooltip.style.display = 'block';
+  positionTooltip(x, y);
+}
+function positionTooltip(x, y) {
+  const W = window.innerWidth, H = window.innerHeight;
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  let left = x + 14, top = y + 14;
+  if (left + tw > W - 10) left = x - tw - 10;
+  if (top + th > H - 10) top = y - th - 10;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top  = top + 'px';
+}
+function hideTooltip() { tooltip.style.display = 'none'; }
+
+/* ── SQL.js ───────────────────────────────────────── */
+showOverlay('Initializing…');
+initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` })
+  .then(s => { SQL = s; hideOverlay(); })
+  .catch(e => showOverlay('SQL.js failed: ' + e.message));
+
+/* ── UI helpers ───────────────────────────────────── */
+function showOverlay(msg) {
+  document.getElementById('overlay-msg').textContent = msg || 'Loading…';
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+function setStatus(txt, active) {
+  const el = document.getElementById('statusBar');
+  el.textContent = txt; el.className = 'status-bar' + (active ? ' active' : '');
+}
+function setDebug(lines) {
+  const el = document.getElementById('debugInfo');
+  if (!lines || !lines.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = lines.map(l => escHtml(l)).join('<br>');
+}
+
+/* ── Resizable handles ────────────────────────────── */
+function makeResizeV(handleId, targetEl, onDone) {
+  const handle = document.getElementById(handleId);
+  let dragging = false, startX, startW;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startX = e.clientX; startW = targetEl.offsetWidth;
+    handle.classList.add('active'); document.body.style.cursor = 'col-resize';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const min = parseInt(targetEl.style.minWidth) || 130;
+    const max = parseInt(targetEl.style.maxWidth) || 420;
+    const w = Math.min(max, Math.max(min, startW + (e.clientX - startX)));
+    targetEl.style.width = w + 'px';
+    if (onDone) onDone();
+  });
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false; handle.classList.remove('active'); document.body.style.cursor = '';
+    map.invalidateSize();
+  });
+}
+makeResizeV('rHandleV1', document.getElementById('sidebar'));
+makeResizeV('rHandleV2', document.getElementById('filterPanelCol'));
+
+/* ── Dropdown ─────────────────────────────────────── */
+const msDropdown = document.getElementById('msDropdown');
+const msSearch   = document.getElementById('msSearch');
+const msList     = document.getElementById('msList');
+const msCount    = document.getElementById('msCount');
+
+document.getElementById('msAll').addEventListener('click', () => {
+  msList.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true);
+  syncDropdown();
+});
+document.getElementById('msNone').addEventListener('click', () => {
+  msList.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+  syncDropdown();
+});
+msSearch.addEventListener('input', () => {
+  const q = msSearch.value.toLowerCase();
+  msList.querySelectorAll('label').forEach(lbl =>
+    lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none'
+  );
+});
+msList.addEventListener('change', syncDropdown);
+
+function syncDropdown() {
+  if (!activeDropdownColName) return;
+  const f = activeFilters[activeDropdownColName];
+  if (!f) return;
+  const sel = new Set();
+  msList.querySelectorAll('input[type=checkbox]:checked').forEach(c => sel.add(c.dataset.val));
+  f.values = sel;
+  updateCardPreview(activeDropdownColName);
+}
+
+function openDropdown(colName, anchorEl) {
+  if (activeDropdownColName === colName) { closeDropdown(); return; }
+  activeDropdownColName = colName;
+  const f = activeFilters[colName];
+  if (!f || f.type !== 'text') return;
+  msSearch.value = '';
+  msList.innerHTML = f.all.map(v =>
+    `<label><input type="checkbox" data-val="${escAttr(v)}" ${f.values.has(v)?'checked':''}>${escHtml(v)||'<em style="opacity:.4">(empty)</em>'}</label>`
+  ).join('');
+  msCount.textContent = f.all.length + ' values';
+
+  const rect = anchorEl.getBoundingClientRect();
+  const dropW = 240;
+  let left = rect.left;
+  if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8;
+  msDropdown.style.left  = left + 'px';
+  msDropdown.style.top   = (rect.bottom + 2) + 'px';
+  msDropdown.style.width = dropW + 'px';
+  msDropdown.classList.add('open');
+}
+function closeDropdown() {
+  msDropdown.classList.remove('open');
+  activeDropdownColName = null;
+}
+document.addEventListener('mousedown', e => {
+  if (!msDropdown.contains(e.target) && !e.target.closest('.ms-trigger')) closeDropdown();
+});
+
+/* Update trigger label + preview tags */
+function updateCardPreview(colName) {
+  const f = activeFilters[colName];
+  const entry = msTriggerMap[colName];
+  if (!f || !entry) return;
+
+  const total = f.all.length;
+  const sel   = f.values.size;
+  const trigger = entry.trigger;
+  const preview = entry.preview;
+
+  // Trigger label
+  const textEl = trigger.querySelector('.ms-text');
+  if (sel === 0)     textEl.textContent = '(none selected)';
+  else if (sel === total) textEl.textContent = `All (${total})`;
+  else               textEl.textContent = `${sel} / ${total} selected`;
+
+  // Preview tags — show selected values (up to 8, then "+N more")
+  if (preview) {
+    preview.innerHTML = '';
+    if (sel === 0 || sel === total) return;
+    const vals = [...f.values];
+    const show = vals.slice(0, 8);
+    show.forEach(v => {
+      const tag = document.createElement('span');
+      tag.className = 'ms-val-tag';
+      tag.textContent = v || '(empty)';
+      tag.title = v;
+      preview.appendChild(tag);
+    });
+    if (vals.length > 8) {
+      const more = document.createElement('span');
+      more.className = 'ms-val-tag more';
+      more.textContent = `+${vals.length - 8} more`;
+      preview.appendChild(more);
+    }
+  }
+}
+
+/* ── File upload ──────────────────────────────────── */
+const uploadZone = document.getElementById('uploadZone');
+const fileInput  = document.getElementById('fileInput');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault(); uploadZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0]; if (f) loadFile(f);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+async function loadFile(file) {
+  showOverlay('Reading file…');
+  try {
+    const buf = await file.arrayBuffer();
+    showOverlay('Opening GeoPackage…');
+    db = new SQL.Database(new Uint8Array(buf));
+    const layers = getGeoPackageLayers();
+    if (!layers.length) throw new Error('No geometry feature layers found.');
+    populateLayerSelect(layers);
+    document.getElementById('noDataMsg').style.display = 'none';
+    document.getElementById('layerSection').style.display = 'block';
+    setStatus(file.name + ' — ' + layers.length + ' layer(s)', true);
+    await loadLayer(layers[0]);
+  } catch(e) { hideOverlay(); alert('Error: ' + e.message); console.error(e); }
+}
+
+/* ── Layer discovery ──────────────────────────────── */
+function getGeoPackageLayers() {
+  try {
+    const r = db.exec(`SELECT table_name FROM gpkg_contents WHERE data_type='features'`);
+    if (r.length && r[0].values.length) return r[0].values.map(v => v[0]);
+  } catch(e) {}
+  try {
+    const r = db.exec(`SELECT DISTINCT table_name FROM gpkg_geometry_columns`);
+    if (r.length && r[0].values.length) return r[0].values.map(v => v[0]);
+  } catch(e) {}
+  return [];
+}
+function populateLayerSelect(layers) {
+  const sel = document.getElementById('layerSelect');
+  sel.innerHTML = layers.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  sel.onchange = () => loadLayer(sel.value);
+}
+
+/* ── Load layer ───────────────────────────────────── */
+async function loadLayer(layerName) {
+  currentLayer = layerName;
+  columns = []; activeFilters = {}; projTransform = null;
+  closeDropdown();
+  clearAllFilters(false);
+  setDebug([]);
+
+  showOverlay('Analyzing layer…');
+
+  geomColumn = 'geom'; layerSRID = 4326;
+  try {
+    const r = db.exec(`SELECT column_name, srs_id FROM gpkg_geometry_columns WHERE table_name='${layerName}'`);
+    if (r.length && r[0].values.length) { geomColumn = r[0].values[0][0]; layerSRID = Number(r[0].values[0][1]); }
+  } catch(e) {}
+
+  const dbg = [`Layer: ${layerName}`, `Geom: ${geomColumn}`, `SRID: ${layerSRID}`];
+
+  if (layerSRID && layerSRID !== 4326 && layerSRID !== 0) {
+    try {
+      const r = db.exec(`SELECT definition FROM gpkg_spatial_ref_sys WHERE srs_id=${layerSRID} LIMIT 1`);
+      if (r.length && r[0].values.length) {
+        const def = r[0].values[0][0];
+        if (def && def !== 'undefined' && def.length > 5) {
+          proj4.defs(`EPSG:${layerSRID}`, def);
+          projTransform = proj4(`EPSG:${layerSRID}`, 'EPSG:4326');
+          dbg.push(`Reprojecting EPSG:${layerSRID}→WGS84`);
+        }
+      }
+    } catch(e) { dbg.push('Proj4: ' + e.message); }
+  }
+
+  const GEOM = new Set([geomColumn.toLowerCase(),'geom','geometry','the_geom','shape','wkb_geometry','ogr_geometry','geom_wgs84']);
+  try {
+    const info = db.exec(`PRAGMA table_info("${layerName}")`);
+    if (!info.length) throw new Error('No table info');
+    columns = info[0].values
+      .filter(r => !GEOM.has(String(r[1]).toLowerCase()))
+      .map(r => ({ name: r[1], type: inferType(r[2]) }));
+    dbg.push(`${columns.length} columns`);
+  } catch(e) { hideOverlay(); alert('Error: ' + e.message); return; }
+
+  renderColList();
+  document.getElementById('colSection').style.display = 'flex';
+  setDebug(dbg);
+  await applyFilters();
+}
+
+function inferType(t) {
+  return t && /INT|REAL|FLOAT|DOUBLE|NUMERIC|DECIMAL|NUMBER/i.test(t) ? 'number' : 'text';
+}
+
+/* ── Column list ──────────────────────────────────── */
+function renderColList() {
+  const list = document.getElementById('colList');
+  list.innerHTML = columns.map(c => `
+    <div class="col-item" data-col="${escAttr(c.name)}">
+      <input type="checkbox" id="cc_${escAttr(c.name)}">
+      <span class="col-name" title="${escHtml(c.name)}">${escHtml(c.name)}</span>
+      <span class="type-badge ${c.type==='number'?'num':''}">${c.type}</span>
+    </div>
+  `).join('');
+
+  list.addEventListener('click', e => {
+    const item = e.target.closest('.col-item');
+    if (!item) return;
+    const safeId = item.dataset.col;
+    const col = columns.find(c => escAttr(c.name) === safeId);
+    if (!col) return;
+    const chk = item.querySelector('input[type=checkbox]');
+    if (e.target !== chk) chk.checked = !chk.checked;
+    if (chk.checked) addFilterCard(col.name);
+    else removeFilterCard(col.name);
+  });
+}
+
+/* ── Filter cards ─────────────────────────────────── */
+function clearAllFilters(keepData) {
+  Object.keys(msTriggerMap).forEach(k => delete msTriggerMap[k]);
+  if (!keepData) activeFilters = {};
+  document.getElementById('filterCards').innerHTML =
+    '<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
+  document.getElementById('resetBtn').style.display = 'none';
+  document.getElementById('resultInfo').textContent = '';
+  document.querySelectorAll('#colList input[type=checkbox]').forEach(c => c.checked = false);
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  clearAllFilters(false);
+  applyFilters();
+});
+
+function updateResetBtn() {
+  const hasFCards = document.querySelectorAll('#filterCards .fcard').length > 0;
+  document.getElementById('resetBtn').style.display = hasFCards ? 'inline-block' : 'none';
+}
+
+function addFilterCard(colName) {
+  const col = columns.find(c => c.name === colName);
+  if (!col) return;
+
+  const placeholder = document.getElementById('noFiltersMsg');
+  if (placeholder) placeholder.remove();
+
+  const safeId = escAttr(colName);
+  const card = document.createElement('div');
+  card.className = 'fcard';
+  card.id = `fcard_${safeId}`;
+
+  if (col.type === 'number') {
+    let mn = '', mx = '';
+    try {
+      const r = db.exec(`SELECT MIN("${colName}"), MAX("${colName}") FROM "${currentLayer}"`);
+      if (r.length) { mn = r[0].values[0][0] ?? ''; mx = r[0].values[0][1] ?? ''; }
+    } catch(e) {}
+
+    card.innerHTML = `
+      <div class="fcard-head">
+        <span class="type-dot num"></span>
+        <span class="fcard-colname num" title="${escHtml(colName)}">${escHtml(colName)}</span>
+        <span class="fcard-remove">×</span>
+      </div>
+      <div class="fcard-body">
+        <div class="range-inputs">
+          <input type="number" id="rmin_${safeId}" placeholder="Min${mn!==''?' '+mn:''}" step="any">
+          <span>–</span>
+          <input type="number" id="rmax_${safeId}" placeholder="Max${mx!==''?' '+mx:''}" step="any">
+        </div>
+      </div>
+    `;
+    activeFilters[colName] = { type: 'number', min: null, max: null };
+    card.querySelector(`#rmin_${safeId}`).addEventListener('input', e => {
+      activeFilters[colName].min = e.target.value !== '' ? parseFloat(e.target.value) : null;
+    });
+    card.querySelector(`#rmax_${safeId}`).addEventListener('input', e => {
+      activeFilters[colName].max = e.target.value !== '' ? parseFloat(e.target.value) : null;
+    });
+
+  } else {
+    let values = [];
+    try {
+      const r = db.exec(`SELECT DISTINCT "${colName}" FROM "${currentLayer}" WHERE "${colName}" IS NOT NULL ORDER BY "${colName}" LIMIT 2000`);
+      if (r.length) values = r[0].values.map(v => v[0] === null ? '' : String(v[0]));
+    } catch(e) {}
+
+    activeFilters[colName] = { type: 'text', values: new Set(values), all: values };
+
+    card.innerHTML = `
+      <div class="fcard-head">
+        <span class="type-dot"></span>
+        <span class="fcard-colname" title="${escHtml(colName)}">${escHtml(colName)}</span>
+        <span class="fcard-remove">×</span>
+      </div>
+      <div class="fcard-body">
+        <div class="ms-trigger" id="mst_${safeId}">
+          <span class="ms-text">All (${values.length})</span>
+          <svg width="7" height="7" viewBox="0 0 8 8"><path fill="#546070" d="M4 6L0 2h8z"/></svg>
+        </div>
+        <div class="ms-selected-preview" id="msprev_${safeId}"></div>
+      </div>
+    `;
+
+    const trigger = card.querySelector(`#mst_${safeId}`);
+    const preview = card.querySelector(`#msprev_${safeId}`);
+    msTriggerMap[colName] = { trigger, preview };
+
+    trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      openDropdown(colName, trigger);
+    });
+  }
+
+  card.querySelector('.fcard-remove').addEventListener('click', () => {
+    removeFilterCard(colName);
+    const chk = document.getElementById(`cc_${safeId}`);
+    if (chk) chk.checked = false;
+  });
+
+  document.getElementById('filterCards').appendChild(card);
+  updateResetBtn();
+}
+
+function removeFilterCard(colName) {
+  const safeId = escAttr(colName);
+  const card = document.getElementById(`fcard_${safeId}`);
+  if (card) card.remove();
+  delete activeFilters[colName];
+  delete msTriggerMap[colName];
+  if (activeDropdownColName === colName) closeDropdown();
+
+  if (!document.querySelector('#filterCards .fcard')) {
+    document.getElementById('filterCards').innerHTML =
+      '<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
+  }
+  updateResetBtn();
+}
+
+/* ── Apply filters ────────────────────────────────── */
+document.getElementById('applyBtn').addEventListener('click', applyFilters);
+
+async function applyFilters() {
+  showOverlay('Querying…');
+  await delay(30);
+  try { _applyFilters(); }
+  catch(e) { hideOverlay(); alert('Query error: ' + e.message); console.error(e); }
+}
+
+function _applyFilters() {
+  const clauses = [];
+  for (const [col, f] of Object.entries(activeFilters)) {
+    if (f.type === 'number') {
+      if (f.min !== null) clauses.push(`"${col}" >= ${f.min}`);
+      if (f.max !== null) clauses.push(`"${col}" <= ${f.max}`);
+    } else {
+      if (f.values.size === 0) { clauses.push('1=0'); continue; }
+      if (f.values.size < f.all.length) {
+        const inList = [...f.values].map(v => `'${v.replace(/'/g,"''")}'`).join(',');
+        clauses.push(`"${col}" IN (${inList})`);
+      }
+    }
+  }
+  const where = clauses.length ? 'WHERE ' + clauses.join(' AND ') : '';
+
+  // No LIMIT — fetch all matching features
+  const sql = `SELECT "${geomColumn}" AS _gpkg_geom_, * FROM "${currentLayer}" ${where}`;
+
+  let res;
+  try { res = db.exec(sql); }
+  catch(e) { throw new Error(e.message + '\n' + sql); }
+
+  if (!res.length || !res[0].values.length) {
+    clearMap(); hideOverlay();
+    document.getElementById('resultInfo').innerHTML = '<strong>0</strong> features';
+    return;
+  }
+
+  const cols = res[0].columns;
+  const geomIdx = cols.indexOf('_gpkg_geom_');
+  let failed = 0;
+  const features = [];
+
+  for (const row of res[0].values) {
+    const blob = row[geomIdx];
+    if (!blob) { failed++; continue; }
+    let geom;
+    try { geom = parseGpkgGeom(blob); } catch(e) { failed++; continue; }
+    if (!geom) { failed++; continue; }
+    if (projTransform) try { reprojectGeom(geom); } catch(e) {}
+
+    const props = {};
+    for (let i = 0; i < cols.length; i++) {
+      if (i === geomIdx) continue;
+      const v = row[i];
+      if (v instanceof Uint8Array || (v && v.buffer instanceof ArrayBuffer)) continue;
+      props[cols[i]] = v;
+    }
+    features.push({ type: 'Feature', geometry: geom, properties: props });
+  }
+
+  renderGeoJSON({ type: 'FeatureCollection', features });
+  document.getElementById('resultInfo').innerHTML =
+    `<strong>${features.length}</strong> features${failed ? ` (${failed} skipped)` : ''}`;
+  hideOverlay();
+}
+
+/* ── Reproject ────────────────────────────────────── */
+function reprojectGeom(geom) {
+  function reproj(c) {
+    if (!c || !c.length) return;
+    if (typeof c[0] === 'number') {
+      const [lng, lat] = projTransform.forward([c[0], c[1]]);
+      c[0] = lng; c[1] = lat;
+    } else c.forEach(reproj);
+  }
+  if (geom.coordinates) reproj(geom.coordinates);
+  if (geom.geometries) geom.geometries.forEach(g => reprojectGeom(g));
+}
+
+/* ── WKB parser ───────────────────────────────────── */
+function parseGpkgGeom(input) {
+  let bytes;
+  if (input instanceof Uint8Array) bytes = input;
+  else if (Array.isArray(input)) bytes = new Uint8Array(input);
+  else if (ArrayBuffer.isView(input)) bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  else if (input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  else return null;
+
+  if (bytes.length < 8 || bytes[0] !== 0x47 || bytes[1] !== 0x50) return null;
+  const flags = bytes[3];
+  if ((flags >> 4) & 0x01) return null;
+  const envN = (flags >> 1) & 0x07;
+  const envCount = [0, 4, 6, 6, 8][envN] || 0;
+  const wkbStart = 8 + envCount * 8;
+  if (wkbStart >= bytes.length) return null;
+
+  const wkbBuf = bytes.buffer.slice(bytes.byteOffset + wkbStart, bytes.byteOffset + bytes.length);
+  const r = readWKB(new DataView(wkbBuf), 0);
+  return r ? r.geom : null;
+}
+
+function readWKB(view, off) {
+  if (off + 5 > view.byteLength) return null;
+  const le = view.getUint8(off) === 1; off++;
+  const rawType = view.getUint32(off, le); off += 4;
+
+  const baseType = rawType % 1000 || (rawType & 0xFFFF);
+  const dimOffset = Math.floor(rawType / 1000);
+  const hasZ = !!(rawType & 0x80000000) || dimOffset === 1 || dimOffset === 3;
+  const hasM = !!(rawType & 0x40000000) || dimOffset === 2 || dimOffset === 3;
+  const extra = (hasZ ? 1 : 0) + (hasM ? 1 : 0);
+
+  function readCoords(n) {
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+      const x = view.getFloat64(off, le); off += 8;
+      const y = view.getFloat64(off, le); off += 8;
+      off += extra * 8;
+      arr.push([x, y]);
+    }
+    return arr;
+  }
+
+  switch (baseType) {
+    case 1: { const x=view.getFloat64(off,le);off+=8; const y=view.getFloat64(off,le);off+=8; off+=extra*8; return {geom:{type:'Point',coordinates:[x,y]},off}; }
+    case 2: { const n=view.getUint32(off,le);off+=4; return {geom:{type:'LineString',coordinates:readCoords(n)},off}; }
+    case 3: {
+      const nr=view.getUint32(off,le);off+=4; const rings=[];
+      for(let r=0;r<nr;r++){const n=view.getUint32(off,le);off+=4;rings.push(readCoords(n));}
+      return {geom:{type:'Polygon',coordinates:rings},off};
+    }
+    case 4: { const n=view.getUint32(off,le);off+=4; const pts=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;pts.push(r.geom.coordinates);} return {geom:{type:'MultiPoint',coordinates:pts},off}; }
+    case 5: { const n=view.getUint32(off,le);off+=4; const ls=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ls.push(r.geom.coordinates);} return {geom:{type:'MultiLineString',coordinates:ls},off}; }
+    case 6: { const n=view.getUint32(off,le);off+=4; const ps=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ps.push(r.geom.coordinates);} return {geom:{type:'MultiPolygon',coordinates:ps},off}; }
+    case 7: { const n=view.getUint32(off,le);off+=4; const gs=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;gs.push(r.geom);} return {geom:{type:'GeometryCollection',geometries:gs},off}; }
+    default: console.warn('Unknown WKB type:',baseType); return null;
+  }
+}
+
+/* ── Map rendering ────────────────────────────────── */
+function clearMap() {
+  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
+}
+
+function renderGeoJSON(fc) {
+  clearMap();
+  geojsonLayer = L.geoJSON(fc, {
+    style: { color: '#c8f530', weight: 1.5, opacity: 0.9, fillColor: '#c8f530', fillOpacity: 0.18 },
+    pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+      radius: 4, color: '#30f5c8', weight: 1.5, fillColor: '#30f5c8', fillOpacity: 0.6
+    }),
+    onEachFeature: (f, layer) => {
+      const props = f.properties || {};
+
+      // Hover events → custom wide tooltip
+      layer.on('mouseover', e => {
+        showTooltip(props, e.originalEvent.clientX, e.originalEvent.clientY);
+        layer.setStyle && layer.setStyle({ color: '#fff', weight: 2, fillOpacity: 0.4 });
+      });
+      layer.on('mousemove', e => positionTooltip(e.originalEvent.clientX, e.originalEvent.clientY));
+      layer.on('mouseout', () => {
+        hideTooltip();
+        geojsonLayer.resetStyle(layer);
+      });
+
+      // Click → popup (also wide)
+      const rows = Object.entries(props)
+        .map(([k,v]) =>
+          `<tr><td style="color:#546070;padding-right:8px;white-space:nowrap;vertical-align:top;max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(k)}</td>` +
+          `<td style="word-break:break-word;max-width:260px">${escHtml(String(v??''))}</td></tr>`
+        ).join('');
+      layer.bindPopup(
+        `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;min-width:300px;max-width:480px">` +
+        `<table style="border-collapse:collapse;width:100%">${rows}</table></div>`,
+        { maxHeight: 320, maxWidth: 520 }
+      );
+    }
+  }).addTo(map);
+
+  try {
+    const b = geojsonLayer.getBounds();
+    if (b.isValid()) map.fitBounds(b, { padding: [24, 24], maxZoom: 18 });
+  } catch(e) {}
+}
+
+/* ── Utilities ────────────────────────────────────── */
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escAttr(s) { return String(s).replace(/[^a-zA-Z0-9_]/g,'_'); }
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
