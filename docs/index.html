@@ -23,6 +23,39 @@
   --muted:   #546070;
   --danger:  #f04f30;
   --sz: 11px;
+  /* SVG tree colors (theme-aware) */
+  --svg-bg:    #0d0f12;
+  --svg-grid:  #191e28;
+  --svg-hdr:   #2a3445;
+  --svg-edge:  #1e2530;
+  --node-int:  #171c25;
+  --node-root: #111620;
+  --lbl-leaf:  #cdd8e8;
+  --lbl-int:   #6a7e94;
+  --cnt-clr:   #344455;
+}
+html[data-theme="light"]:root {
+  --bg:      #f2f4f7;
+  --panel:   #ffffff;
+  --panel2:  #f7f8fa;
+  --panel3:  #eef0f4;
+  --border:  #dde1e8;
+  --border2: #c8cfd9;
+  --accent:  #4a7c00;
+  --accent2: #007a64;
+  --text:    #1a2030;
+  --muted:   #7a8898;
+  --danger:  #d0341a;
+  --sz: 11px;
+  --svg-bg:    #f2f4f7;
+  --svg-grid:  #e0e4ec;
+  --svg-hdr:   #a0aab8;
+  --svg-edge:  #d8dce8;
+  --node-int:  #e8ecf4;
+  --node-root: #dde3ef;
+  --lbl-leaf:  #1a2030;
+  --lbl-int:   #4a5870;
+  --cnt-clr:   #7a8898;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'JetBrains Mono',monospace;font-size:var(--sz);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
@@ -105,6 +138,7 @@ header .tag{font-size:.6rem;color:var(--muted);padding:1px 4px;border:1px solid 
 .btn-sm.accent{background:var(--accent);color:#0d0f12;border-color:var(--accent);font-weight:700}
 .btn-sm.accent:hover{opacity:.85}
 .btn-sm.danger:hover{color:var(--danger);border-color:var(--danger)}
+.btn-sm.active{background:var(--panel2);color:var(--text);border-color:var(--border2)}
 
 /* Map col */
 .map-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
@@ -183,6 +217,69 @@ input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer
 .geo-tooltip td{padding:1px 0;vertical-align:top}
 .geo-tooltip td:first-child{color:var(--muted);padding-right:8px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
 .geo-tooltip td:last-child{color:var(--text);word-break:break-word;max-width:260px}
+
+/* ══ Color Tree Panel ══════════════════════════════════════ */
+.tree-panel{width:300px;min-width:200px;max-width:600px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.tree-panel-head{display:flex;align-items:center;gap:5px;padding:4px 6px;border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;row-gap:3px}
+.tree-panel-title{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);flex-shrink:0}
+
+/* Column builder strip */
+.tree-builder{padding:5px 6px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:4px}
+.tree-builder-hint{font-size:.57rem;color:var(--muted)}
+.tree-builder-levels{display:flex;flex-wrap:wrap;gap:3px;min-height:16px}
+.tree-level-chip{display:flex;align-items:center;gap:3px;background:var(--panel3);border:1px solid var(--border2);border-radius:10px;padding:1px 6px 1px 8px;font-size:.63rem;color:var(--text);cursor:default}
+.tree-level-chip .lc-num{font-size:.55rem;color:var(--accent2);margin-right:2px}
+.tree-level-chip .lc-rm{cursor:pointer;color:var(--muted);font-size:.75rem;line-height:1;padding:0 1px;transition:color .12s}
+.tree-level-chip .lc-rm:hover{color:var(--danger)}
+.tree-add-row{display:flex;gap:3px}
+.tree-col-select{flex:1;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.67rem;padding:2px 4px;border-radius:2px;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23546070' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center}
+.tree-col-select:focus{border-color:var(--accent)}
+.tree-warn{font-size:.57rem;color:var(--danger)}
+
+/* SVG canvas area */
+.tree-svg-wrap{flex:1;overflow:auto;min-height:0;position:relative;cursor:grab}
+.tree-svg-wrap:active{cursor:grabbing}
+.tree-svg-wrap::-webkit-scrollbar{width:4px;height:4px}
+.tree-svg-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#treeSvg{display:block;font-family:'JetBrains Mono',monospace}
+#treeSvg .node-circle{cursor:pointer;transition:r .15s}
+#treeSvg .node-circle:hover{filter:brightness(1.3)}
+#treeSvg .node-label{font-size:9px;fill:#8a98aa;pointer-events:none;dominant-baseline:central}
+#treeSvg .node-label.leaf{fill:#c8d8e8}
+#treeSvg .node-count{font-size:8px;fill:#546070;pointer-events:none}
+#treeSvg .edge{fill:none;stroke-linecap:round}
+#treeSvg .edge-label{font-size:8px;fill:#546070;pointer-events:none}
+#treeSvg .depth-label{font-size:8px;fill:#2b3140;dominant-baseline:middle}
+#treeSvg .col-divider{stroke:#1e232c;stroke-dasharray:3 4}
+.tree-empty-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--muted);text-align:center;padding:20px;pointer-events:none}
+
+/* Legend */
+.tree-legend-bar{padding:4px 6px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:3px}
+.tree-legend-title{font-size:.57rem;color:var(--muted)}
+.tree-legend-items{display:flex;flex-wrap:wrap;gap:3px;max-height:68px;overflow-y:auto}
+.tree-legend-items::-webkit-scrollbar{height:2px;width:2px}
+.tree-legend-items::-webkit-scrollbar-thumb{background:var(--border2)}
+.tli{display:flex;align-items:center;gap:3px;font-size:.58rem;color:var(--muted);max-width:120px;cursor:pointer;padding:1px 3px;border-radius:2px;transition:background .1s}
+.tli:hover{background:var(--panel2)}
+.tli-sw{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.tli-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tli-n{margin-left:auto;flex-shrink:0;color:#2b3140}
+
+/* Theme transition */
+*, *::before, *::after { transition: background-color .18s, border-color .18s, color .1s; }
+/* but NOT SVG children (too slow) */
+svg *, canvas { transition: none !important; }
+
+/* Theme toggle button in header */
+.theme-toggle{margin-left:auto;display:flex;align-items:center;gap:5px}
+.theme-btn{font-family:inherit;font-size:.6rem;padding:2px 6px;border-radius:10px;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--muted);transition:all .15s}
+.theme-btn.active{background:var(--accent);color:#0d0f12;border-color:var(--accent);font-weight:700}
+html[data-theme="light"] .theme-btn.active{color:#fff;background:var(--accent2);border-color:var(--accent2)}
+
+/* Leaflet light mode adjustments */
+html[data-theme="light"] .leaflet-container { background: #e8ecf4; }
+html[data-theme="light"] .leaflet-bar a { background: var(--panel); color: var(--text); border-color: var(--border); }
+html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"] .leaflet-popup-tip { background: var(--panel); color: var(--text); }
 </style>
 </head>
 <body>
@@ -200,6 +297,10 @@ input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer
 <header>
   <h1>GeoFilter</h1><span class="tag">.gpkg</span>
   <div class="status-bar" id="statusBar">No file loaded</div>
+  <div class="theme-toggle">
+    <button class="theme-btn active" data-theme="dark" title="Dark theme">◑ Dark</button>
+    <button class="theme-btn" data-theme="light" title="Light theme">◐ Light</button>
+  </div>
 </header>
 
 <div class="app-body">
@@ -280,6 +381,48 @@ input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer
       </div>
       <div class="dist-panel-body" id="distBody"></div>
     </div>
+  </div><!-- /map-col -->
+
+  <!-- Col 4: Color Tree -->
+  <div class="tree-panel" id="treePanel">
+    <div class="tree-panel-head">
+      <span class="tree-panel-title">Color Tree</span>
+      <div style="display:flex;gap:2px;align-items:center;margin-left:6px">
+        <button class="btn-sm active" id="treeOrientH" title="Horizontal layout">⇔</button>
+        <button class="btn-sm" id="treeOrientV" title="Vertical layout">⇕</button>
+      </div>
+      <div style="display:flex;gap:3px;margin-left:auto;align-items:center">
+        <button class="btn-sm" id="treeFitBtn" title="Fit to view" style="display:none">⊡ Fit</button>
+        <button class="btn-sm danger" id="treeClearBtn" style="display:none">✕ Clear</button>
+      </div>
+    </div>
+
+    <!-- Level builder -->
+    <div class="tree-builder">
+      <div class="tree-builder-hint">Add categorical split levels to color geometries:</div>
+      <div class="tree-builder-levels" id="treeLevelList"></div>
+      <div class="tree-add-row">
+        <select class="tree-col-select" id="treeColPicker">
+          <option value="">— select column —</option>
+        </select>
+        <button class="btn-sm accent" id="treeAddLevelBtn">+ Split</button>
+      </div>
+      <div class="tree-warn" id="treeMaxValWarn"></div>
+    </div>
+
+    <!-- SVG dendrogram -->
+    <div class="tree-svg-wrap" id="treeSvgWrap">
+      <svg id="treeSvg"></svg>
+      <div class="tree-empty-msg" id="treeEmptyMsg">Add columns above to build the color tree</div>
+    </div>
+
+    <!-- Legend -->
+    <div class="tree-legend-bar" id="treeLegendBar" style="display:none">
+      <div class="tree-legend-title">Leaf colors — <span id="treeLegendCount"></span> groups</div>
+      <div class="tree-legend-items" id="treeLegendItems"></div>
+    </div>
+
+    <div class="resize-handle-v" id="rHandleV3" style="left:-3px;right:auto"></div>
   </div>
 
 </div>
@@ -327,7 +470,16 @@ document.querySelectorAll('.basemap-btn').forEach(btn => {
   });
 });
 
-/* ── Color / opacity controls ────────────────────────────── */
+/* ── Theme toggle ────────────────────────────────────────── */
+document.querySelectorAll('.theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const theme = btn.dataset.theme;
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? '' : 'light');
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+    // Update SVG background if tree is visible
+    if (treeRoot) drawDendrogram();
+  });
+});
 document.getElementById('geoColor').addEventListener('input', e => { geoFill = e.target.value; redrawStyle(); });
 document.getElementById('geoStroke').addEventListener('input', e => { geoStroke = e.target.value; redrawStyle(); });
 document.getElementById('fillOpacity').addEventListener('input', e => {
@@ -337,7 +489,12 @@ document.getElementById('fillOpacity').addEventListener('input', e => {
 });
 function redrawStyle() {
   if (!geojsonLayer) return;
-  geojsonLayer.setStyle({ color: geoStroke, fillColor: geoFill, fillOpacity: geoFillOpacity, weight: 1.5, opacity: 0.9 });
+  if (featureColorMap.size > 0) {
+    // Re-apply tree coloring (opacity may have changed)
+    applyTreeColoring();
+  } else {
+    geojsonLayer.setStyle({ color: geoStroke, fillColor: geoFill, fillOpacity: geoFillOpacity, weight: 1.5, opacity: 0.9 });
+  }
 }
 
 /* ── Tooltip ─────────────────────────────────────────────── */
@@ -536,6 +693,15 @@ async function loadLayer(layerName) {
   renderColList();
   document.getElementById('colSection').style.display='flex';
   setDebug(dbg);
+  // Reset tree state for new layer
+  treeLevels=[]; treeRoot=null; featureColorMap.clear();
+  renderLevelChips();
+  treePopulatePicker();
+  document.getElementById('treeSvg').innerHTML='';
+  document.getElementById('treeEmptyMsg').style.display='flex';
+  document.getElementById('treeLegendBar').style.display='none';
+  document.getElementById('treeFitBtn').style.display='none';
+  document.getElementById('treeClearBtn').style.display='none';
   await applyFilters();
 }
 function inferType(t){return t&&/INT|REAL|FLOAT|DOUBLE|NUMERIC|DECIMAL|NUMBER/i.test(t)?'number':'text';}
@@ -700,7 +866,9 @@ function _applyFilters() {
     if(projTransform) try{reprojectGeom(geom);}catch(e){}
     const props={};
     for(let i=0;i<cols.length;i++){if(i===geomIdx)continue;const v=row[i];if(v instanceof Uint8Array||(v&&v.buffer instanceof ArrayBuffer))continue;props[cols[i]]=v;}
-    features.push({type:'Feature',geometry:geom,properties:props});
+    const feat = {type:'Feature',geometry:geom,properties:props};
+    feat._featureIdx = features.length;
+    features.push(feat);
   }
 
   currentFeatures=features;
@@ -708,6 +876,7 @@ function _applyFilters() {
   document.getElementById('resultInfo').innerHTML=`<strong>${features.length}</strong> features${failed?` (${failed} skipped)`:''}`;
   hideOverlay();
   if(distCols.size>0) renderDistribution();
+  rebuildTreeIfActive();
 }
 
 /* ── Reproject ────────────────────────────────────────────── */
@@ -760,13 +929,39 @@ function clearMap(){if(geojsonLayer){map.removeLayer(geojsonLayer);geojsonLayer=
 function renderGeoJSON(fc){
   clearMap();
   geojsonLayer=L.geoJSON(fc,{
-    style:{color:geoStroke,weight:1.5,opacity:.9,fillColor:geoFill,fillOpacity:geoFillOpacity},
-    pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:4,color:geoStroke,weight:1.5,fillColor:geoFill,fillOpacity:Math.min(1,geoFillOpacity*3)}),
+    style: f => {
+      const idx = f._featureIdx;
+      if (featureColorMap.size > 0 && idx !== undefined && featureColorMap.has(idx)) {
+        const c = featureColorMap.get(idx);
+        return { color:c, weight:1.2, opacity:.9, fillColor:c, fillOpacity: Math.min(1,geoFillOpacity+0.15) };
+      }
+      return {color:geoStroke,weight:1.5,opacity:.9,fillColor:geoFill,fillOpacity:geoFillOpacity};
+    },
+    pointToLayer:(f,latlng)=>{
+      const idx = f._featureIdx;
+      let c = geoFill, s = geoStroke;
+      if (featureColorMap.size > 0 && idx !== undefined && featureColorMap.has(idx)) { c = s = featureColorMap.get(idx); }
+      const marker = L.circleMarker(latlng,{radius:4,color:s,weight:1.5,fillColor:c,fillOpacity:Math.min(1,geoFillOpacity*3+0.1)});
+      marker.options._featureIdx = idx;
+      return marker;
+    },
     onEachFeature:(f,layer)=>{
+      // Store index for tree coloring updates
+      layer.options._featureIdx = f._featureIdx;
       const props=f.properties||{};
       layer.on('mouseover',e=>{showTooltip(props,e.originalEvent.clientX,e.originalEvent.clientY);if(layer.setStyle)layer.setStyle({color:'#fff',weight:2,fillOpacity:Math.min(1,geoFillOpacity+.2)});});
       layer.on('mousemove',e=>positionTooltip(e.originalEvent.clientX,e.originalEvent.clientY));
-      layer.on('mouseout',()=>{hideTooltip();geojsonLayer.resetStyle(layer);});
+      layer.on('mouseout',()=>{
+        hideTooltip();
+        // Restore tree color if active, else plain
+        const idx = layer.options._featureIdx;
+        if (featureColorMap.size > 0 && idx !== undefined && featureColorMap.has(idx)) {
+          const c = featureColorMap.get(idx);
+          if (layer.setStyle) layer.setStyle({color:c,fillColor:c,fillOpacity:Math.min(1,geoFillOpacity+0.15),weight:1.2,opacity:.9});
+        } else {
+          geojsonLayer.resetStyle(layer);
+        }
+      });
       const rows=Object.entries(props).map(([k,v])=>`<tr><td style="color:#546070;padding-right:8px;white-space:nowrap;vertical-align:top;max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(k)}</td><td style="word-break:break-word;max-width:260px">${escHtml(String(v??''))}</td></tr>`).join('');
       layer.bindPopup(`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;min-width:300px;max-width:480px"><table style="border-collapse:collapse;width:100%">${rows}</table></div>`,{maxHeight:320,maxWidth:520});
     }
@@ -965,6 +1160,524 @@ function drawViolin(ctx, stats, sorted, toY, pad, innerW, cw, dataMin, dataMax, 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escAttr(s){return String(s).replace(/[^a-zA-Z0-9_]/g,'_');}
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+
+/* ══════════════════════════════════════════════════════════════
+   INTERACTIVE SVG DENDROGRAM
+   Left→right layout: root left, leaves right
+   Bezier curved edges colored by branch hue sector
+   Click any node to collapse/expand its subtree
+   Node radius ∝ sqrt(feature count)
+   Pan (drag background) + Zoom (wheel)
+   Leaf node colors → map feature colors
+   ══════════════════════════════════════════════════════════════ */
+
+let treeLevels = [];
+let treeRoot   = null;
+let featureColorMap = new Map();
+const TREE_MAX_VALS = 40;
+let treeOrientation = 'H'; // 'H' = left→right, 'V' = top→down
+
+let treeVB = { x: 0, y: 0, w: 600, h: 400 };
+let _panOrigin = null;
+
+// Orientation toggle
+document.getElementById('treeOrientH').addEventListener('click', () => {
+  treeOrientation = 'H';
+  document.getElementById('treeOrientH').classList.add('active');
+  document.getElementById('treeOrientV').classList.remove('active');
+  if (treeRoot) drawDendrogram();
+});
+document.getElementById('treeOrientV').addEventListener('click', () => {
+  treeOrientation = 'V';
+  document.getElementById('treeOrientV').classList.add('active');
+  document.getElementById('treeOrientH').classList.remove('active');
+  if (treeRoot) drawDendrogram();
+});
+
+// ── Resize panel handle ──────────────────────────────────
+(function () {
+  const h = document.getElementById('rHandleV3');
+  const panel = document.getElementById('treePanel');
+  let drag = false, sx, sw;
+  h.addEventListener('mousedown', e => { drag = true; sx = e.clientX; sw = panel.offsetWidth; h.classList.add('active'); document.body.style.cursor = 'col-resize'; e.preventDefault(); });
+  document.addEventListener('mousemove', e => { if (!drag) return; panel.style.width = Math.min(700, Math.max(220, sw - (e.clientX - sx))) + 'px'; if (treeRoot) drawDendrogram(); });
+  document.addEventListener('mouseup', () => { if (!drag) return; drag = false; h.classList.remove('active'); document.body.style.cursor = ''; map.invalidateSize(); });
+})();
+
+// ── SVG pan & zoom ───────────────────────────────────────
+const _svgWrap = document.getElementById('treeSvgWrap');
+_svgWrap.addEventListener('mousedown', e => {
+  if (e.button !== 0 || e.target.closest('.node-g')) return;
+  _panOrigin = { cx: e.clientX, cy: e.clientY, ox: treeVB.x, oy: treeVB.y };
+});
+document.addEventListener('mousemove', e => {
+  if (!_panOrigin) return;
+  const svg = document.getElementById('treeSvg');
+  const scaleX = treeVB.w / (svg.clientWidth || 1);
+  const scaleY = treeVB.h / (svg.clientHeight || 1);
+  treeVB.x = _panOrigin.ox - (e.clientX - _panOrigin.cx) * scaleX;
+  treeVB.y = _panOrigin.oy - (e.clientY - _panOrigin.cy) * scaleY;
+  svg.setAttribute('viewBox', `${treeVB.x} ${treeVB.y} ${treeVB.w} ${treeVB.h}`);
+});
+document.addEventListener('mouseup', () => { _panOrigin = null; });
+_svgWrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const svg = document.getElementById('treeSvg');
+  const rect = svg.getBoundingClientRect();
+  const px = (e.clientX - rect.left) / rect.width;
+  const py = (e.clientY - rect.top) / rect.height;
+  const f = e.deltaY > 0 ? 1.18 : 0.847;
+  const nw = treeVB.w * f, nh = treeVB.h * f;
+  treeVB.x += (treeVB.w - nw) * px;
+  treeVB.y += (treeVB.h - nh) * py;
+  treeVB.w = nw; treeVB.h = nh;
+  svg.setAttribute('viewBox', `${treeVB.x} ${treeVB.y} ${treeVB.w} ${treeVB.h}`);
+}, { passive: false });
+
+document.getElementById('treeFitBtn').addEventListener('click', () => {
+  const svg = document.getElementById('treeSvg');
+  const tw = +svg.getAttribute('data-tw') || 600;
+  const th = +svg.getAttribute('data-th') || 400;
+  treeVB = { x: 0, y: 0, w: tw, h: th };
+  svg.setAttribute('viewBox', `0 0 ${tw} ${th}`);
+});
+
+// ── Tooltip ──────────────────────────────────────────────
+const _treeTip = (() => {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;z-index:3000;background:var(--panel2);border:1px solid var(--border2);border-radius:3px;padding:4px 7px;font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text);pointer-events:none;display:none;max-width:200px;line-height:1.5;box-shadow:0 4px 12px rgba(0,0,0,.4)';
+  document.body.appendChild(d);
+  return d;
+})();
+function showTreeTip(html, x, y) {
+  _treeTip.innerHTML = html;
+  _treeTip.style.display = 'block';
+  const W = window.innerWidth, H = window.innerHeight;
+  let lx = x + 12, ly = y + 12;
+  if (lx + 210 > W) lx = x - 210;
+  if (ly + 80 > H) ly = y - 80;
+  _treeTip.style.left = lx + 'px'; _treeTip.style.top = ly + 'px';
+}
+function hideTreeTip() { _treeTip.style.display = 'none'; }
+
+// ── Column picker ────────────────────────────────────────
+function treePopulatePicker() {
+  const sel = document.getElementById('treeColPicker');
+  const used = new Set(treeLevels.map(l => l.colName));
+  const avail = columns.filter(c => !used.has(c.name));
+  sel.innerHTML = '<option value="">— select column —</option>' +
+    avail.map(c => `<option value="${escHtml(c.name)}">${escHtml(c.name)}</option>`).join('');
+}
+
+document.getElementById('treeAddLevelBtn').addEventListener('click', () => {
+  const sel = document.getElementById('treeColPicker');
+  const colName = sel.value;
+  if (!colName || !db) return;
+  let nDistinct = 0;
+  try { const r = db.exec(`SELECT COUNT(DISTINCT "${colName}") FROM "${currentLayer}"`); if (r.length) nDistinct = r[0].values[0][0]; } catch (e) {}
+  const warn = document.getElementById('treeMaxValWarn');
+  if (nDistinct > TREE_MAX_VALS) { warn.textContent = `\u26a0 ${nDistinct} distinct values \u2014 max is ${TREE_MAX_VALS}`; return; }
+  warn.textContent = '';
+  treeLevels.push({ colName });
+  renderLevelChips(); treePopulatePicker(); buildTree();
+});
+
+document.getElementById('treeClearBtn').addEventListener('click', () => {
+  treeLevels = []; treeRoot = null; featureColorMap.clear();
+  renderLevelChips(); treePopulatePicker();
+  const svg = document.getElementById('treeSvg');
+  svg.innerHTML = ''; svg.removeAttribute('width'); svg.removeAttribute('height');
+  document.getElementById('treeEmptyMsg').style.display = 'flex';
+  document.getElementById('treeLegendBar').style.display = 'none';
+  document.getElementById('treeFitBtn').style.display = 'none';
+  document.getElementById('treeClearBtn').style.display = 'none';
+  if (geojsonLayer) geojsonLayer.setStyle(() => ({ color: geoStroke, fillColor: geoFill, fillOpacity: geoFillOpacity, weight: 1.5, opacity: .9 }));
+});
+
+function renderLevelChips() {
+  const list = document.getElementById('treeLevelList');
+  list.innerHTML = treeLevels.map((l, i) => `
+    <span class="tree-level-chip">
+      <span class="lc-num">L${i + 1}</span>${escHtml(l.colName)}
+      <span class="lc-rm" data-i="${i}">\xd7</span>
+    </span>`).join('');
+  list.querySelectorAll('.lc-rm').forEach(btn => btn.addEventListener('click', () => {
+    treeLevels.splice(+btn.dataset.i, 1);
+    renderLevelChips(); treePopulatePicker();
+    if (treeLevels.length) buildTree(); else document.getElementById('treeClearBtn').click();
+  }));
+  const has = treeLevels.length > 0;
+  document.getElementById('treeClearBtn').style.display = has ? 'inline-block' : 'none';
+  document.getElementById('treeFitBtn').style.display = has ? 'inline-block' : 'none';
+}
+
+// ── Build data tree ──────────────────────────────────────
+function buildTree() {
+  if (!currentFeatures.length || !treeLevels.length) return;
+  featureColorMap.clear();
+
+  function makeNode(indices, depth, value) {
+    const colName = depth < treeLevels.length ? treeLevels[depth].colName : null;
+    const node = { value, colName, children: [], featureIndices: indices, color: '#888', collapsed: false, depth };
+    if (colName) {
+      const groups = new Map();
+      indices.forEach(idx => {
+        const v = String(currentFeatures[idx].properties[colName] ?? '\u2205');
+        if (!groups.has(v)) groups.set(v, []);
+        groups.get(v).push(idx);
+      });
+      [...groups.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+        .forEach(([val, arr]) => node.children.push(makeNode(arr, depth + 1, val)));
+    }
+    return node;
+  }
+
+  treeRoot = makeNode(currentFeatures.map((_, i) => i), 0, 'ALL');
+  _colorTree(treeRoot, 0, 1);
+  _buildColorMap(treeRoot);
+  drawDendrogram();
+  applyTreeColoring();
+  renderTreeLegend();
+  document.getElementById('treeEmptyMsg').style.display = 'none';
+}
+
+// ── Colors: hue sector per subtree ──────────────────────
+function _colorTree(node, hStart, hRange) {
+  if (node.collapsed || node.children.length === 0) {
+    node.color = `hsl(${((hStart + hRange / 2) * 360).toFixed(1)},75%,60%)`;
+    return;
+  }
+  node.color = `hsl(${((hStart + hRange / 2) * 360).toFixed(1)},35%,38%)`;
+  const n = node.children.length;
+  node.children.forEach((c, i) => _colorTree(c, hStart + hRange * i / n, hRange / n));
+}
+
+function _buildColorMap(node) {
+  if (node.collapsed || node.children.length === 0) {
+    node.featureIndices.forEach(idx => featureColorMap.set(idx, node.color)); return;
+  }
+  node.children.forEach(_buildColorMap);
+}
+
+// ── Layout ───────────────────────────────────────────────
+function _leafCount(node) {
+  if (node.collapsed || node.children.length === 0) return 1;
+  return node.children.reduce((s, c) => s + _leafCount(c), 0);
+}
+function _maxDepth(node) {
+  if (node.collapsed || node.children.length === 0) return node.depth;
+  return Math.max(...node.children.map(_maxDepth));
+}
+function _assignLeafY(node, leafList) {
+  if (node.collapsed || node.children.length === 0) {
+    node._leafIdx = leafList.length; leafList.push(node); return;
+  }
+  node.children.forEach(c => _assignLeafY(c, leafList));
+}
+function _assignNodeY(node, nLeaves, rowH, padT) {
+  if (node.collapsed || node.children.length === 0) {
+    node._py = padT + (node._leafIdx + 0.5) * rowH; return;
+  }
+  node.children.forEach(c => _assignNodeY(c, nLeaves, rowH, padT));
+  node._py = node.children.reduce((s, c) => s + c._py, 0) / node.children.length;
+}
+
+// ── Draw SVG dendrogram ──────────────────────────────────
+function drawDendrogram() {
+  const svg = document.getElementById('treeSvg');
+  svg.innerHTML = '';
+  if (!treeRoot) return;
+
+  _colorTree(treeRoot, 0, 1);
+  featureColorMap.clear();
+  _buildColorMap(treeRoot);
+
+  const leafList = [];
+  _assignLeafY(treeRoot, leafList);
+  const nL = leafList.length;
+  const td = _maxDepth(treeRoot);
+
+  // Read CSS theme vars for SVG colors
+  const cs = getComputedStyle(document.documentElement);
+  const T = {
+    bg:      cs.getPropertyValue('--svg-bg').trim()   || '#0d0f12',
+    grid:    cs.getPropertyValue('--svg-grid').trim() || '#191e28',
+    hdr:     cs.getPropertyValue('--svg-hdr').trim()  || '#2a3445',
+    lblLeaf: cs.getPropertyValue('--lbl-leaf').trim() || '#cdd8e8',
+    lblInt:  cs.getPropertyValue('--lbl-int').trim()  || '#6a7e94',
+    cntClr:  cs.getPropertyValue('--cnt-clr').trim()  || '#344455',
+    nodeInt: cs.getPropertyValue('--node-int').trim() || '#171c25',
+    nodeRt:  cs.getPropertyValue('--node-root').trim()|| '#111620',
+  };
+
+  const isV = treeOrientation === 'V';
+
+  if (isV) {
+    // ── VERTICAL: root top, leaves bottom ──────────────────
+    const PAD = { t: 50, r: 20, b: 80, l: 20 };
+    const colH = Math.max(60, Math.min(120, 480 / Math.max(td + 1, 2)));
+    const colW_v = Math.max(18, Math.min(40, 500 / Math.max(nL, 1)));
+    const cW = PAD.l + nL * colW_v + PAD.r;
+    const cH = PAD.t + td * colH + PAD.b;
+
+    svg.setAttribute('width', cW); svg.setAttribute('height', cH);
+    svg.setAttribute('data-tw', cW); svg.setAttribute('data-th', cH);
+    treeVB = { x: 0, y: 0, w: cW, h: cH };
+    svg.setAttribute('viewBox', `0 0 ${cW} ${cH}`);
+
+    _assignNodeY(treeRoot, nL, colW_v, PAD.l);
+
+    // node coords: X from _py (leaf positions), Y from depth
+    const nx_v = node => node._py;                       // horizontal = leaf position
+    const ny_v = node => PAD.t + node.depth * colH;      // vertical = depth
+
+    svg.appendChild(S('rect', { x: 0, y: 0, width: cW, height: cH, fill: T.bg }));
+
+    // Depth level dividers + column name labels
+    for (let d = 0; d <= td; d++) {
+      const cy = PAD.t + d * colH;
+      if (d > 0) {
+        svg.appendChild(S('line', { x1: 0, y1: cy - colH * 0.5, x2: cW, y2: cy - colH * 0.5, stroke: T.grid, 'stroke-width': 1 }));
+      }
+      const colLabel = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
+      const lbl = S('text', { x: cW - 4, y: cy, 'text-anchor': 'end', 'font-size': 8, fill: T.hdr, 'dominant-baseline': 'middle', 'font-family': 'JetBrains Mono,monospace' });
+      lbl.textContent = colLabel.length > 14 ? colLabel.slice(0, 13) + '…' : colLabel;
+      svg.appendChild(lbl);
+    }
+
+    const edgeG = S('g', {}); svg.appendChild(edgeG);
+    const nodeG = S('g', {}); svg.appendChild(nodeG);
+
+    function drawV(node, parentNode) {
+      const x = nx_v(node), y = ny_v(node);
+      const isLeaf = node.collapsed || node.children.length === 0;
+      const isRoot = node.depth === 0;
+      const frac = node.featureIndices.length / Math.max(1, currentFeatures.length);
+      const r = Math.max(4, Math.min(11, 4 + frac * 28));
+      const sw = Math.max(0.8, Math.min(3, 0.8 + Math.log10(Math.max(2, node.featureIndices.length)) * 0.6));
+
+      if (parentNode) {
+        const px = nx_v(parentNode), py = ny_v(parentNode);
+        const my = (py + y) / 2;
+        edgeG.appendChild(S('path', {
+          d: `M${px},${py} C${px},${my} ${x},${my} ${x},${y}`,
+          fill: 'none', stroke: node.color, 'stroke-width': sw,
+          opacity: isLeaf ? 0.9 : 0.5, 'stroke-linecap': 'round'
+        }));
+        // ── Level name label on edge (at midpoint) ──
+        const edgeLabelDepth = node.depth - 1;
+        if (edgeLabelDepth < treeLevels.length) {
+          const midX = (px + x) / 2;
+          const midY = (py + y) / 2;
+          const bg = S('rect', { x: midX - 22, y: midY - 6, width: 44, height: 10, rx: 2, fill: T.bg, opacity: 0.75 });
+          edgeG.appendChild(bg);
+          const el = S('text', { x: midX, y: midY, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 7, fill: T.hdr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+          const cn = treeLevels[edgeLabelDepth].colName;
+          el.textContent = cn.length > 10 ? cn.slice(0, 9) + '…' : cn;
+          edgeG.appendChild(el);
+        }
+      }
+
+      const g = S('g', { class: 'node-g', transform: `translate(${x},${y})` });
+      if (isLeaf) g.appendChild(S('circle', { r: r + 4, fill: node.color, opacity: 0.1 }));
+      const circle = S('circle', { class: 'node-circle', r, fill: isLeaf ? node.color : (isRoot ? T.nodeRt : T.nodeInt), stroke: node.color, 'stroke-width': isLeaf ? 0 : 1.8, opacity: isLeaf ? 0.93 : 0.82 });
+      g.appendChild(circle);
+      if (node.collapsed && node.children.length > 0) {
+        const ch = S('text', { x: 0, y: r + 9, 'text-anchor': 'middle', 'font-size': 7, fill: node.color, opacity: 0.9, 'pointer-events': 'none' });
+        ch.textContent = '▼'; g.appendChild(ch);
+      }
+      const raw = isRoot ? `ALL n=${node.featureIndices.length}` : String(node.value);
+      const txt = raw.length > 12 ? raw.slice(0, 11) + '…' : raw;
+      const lbl = S('text', { x: 0, y: r + 11, 'text-anchor': 'middle', 'dominant-baseline': 'hanging', 'font-size': isLeaf ? 9 : 8, fill: isLeaf ? T.lblLeaf : T.lblInt, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+      lbl.textContent = txt; g.appendChild(lbl);
+      if (!isRoot && !isLeaf) {
+        const cnt = S('text', { x: 0, y: r + 21, 'text-anchor': 'middle', 'dominant-baseline': 'hanging', 'font-size': 7, fill: T.cntClr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+        cnt.textContent = `n=${node.featureIndices.length}`; g.appendChild(cnt);
+      }
+
+      const tipHtml = () =>
+        `<strong style="color:${node.color}">${escHtml(String(node.value))}</strong><br>` +
+        `<span style="color:var(--muted)">${node.featureIndices.length} features · depth ${node.depth}</span>` +
+        (node.children.length > 0 ? `<br><span style="color:var(--accent2);font-size:9px">${node.collapsed ? 'Click to expand' : 'Click to collapse'}</span>` : '');
+      g.addEventListener('mouseenter', e => { circle.setAttribute('opacity', 1); showTreeTip(tipHtml(), e.clientX, e.clientY); });
+      g.addEventListener('mousemove', e => showTreeTip(tipHtml(), e.clientX, e.clientY));
+      g.addEventListener('mouseleave', () => { circle.setAttribute('opacity', isLeaf ? 0.93 : 0.82); hideTreeTip(); });
+      if (node.children.length > 0) {
+        g.style.cursor = 'pointer';
+        g.addEventListener('click', e => {
+          e.stopPropagation(); hideTreeTip();
+          node.collapsed = !node.collapsed;
+          _colorTree(treeRoot, 0, 1); featureColorMap.clear(); _buildColorMap(treeRoot);
+          drawDendrogram(); applyTreeColoring(); renderTreeLegend();
+        });
+      }
+      nodeG.appendChild(g);
+      if (!node.collapsed) node.children.forEach(c => drawV(c, node));
+    }
+    drawV(treeRoot, null);
+
+  } else {
+    // ── HORIZONTAL: root left, leaves right ────────────────
+    const PAD = { t: 28, r: 130, b: 16, l: 20 };
+    const rowH = Math.max(16, Math.min(30, 480 / Math.max(nL, 1)));
+    const colW = Math.max(70, Math.min(150, 560 / Math.max(td + 1, 2)));
+    const cW = PAD.l + td * colW + PAD.r;
+    const cH = PAD.t + nL * rowH + PAD.b;
+
+    svg.setAttribute('width', cW); svg.setAttribute('height', cH);
+    svg.setAttribute('data-tw', cW); svg.setAttribute('data-th', cH);
+    treeVB = { x: 0, y: 0, w: cW, h: cH };
+    svg.setAttribute('viewBox', `0 0 ${cW} ${cH}`);
+
+    _assignNodeY(treeRoot, nL, rowH, PAD.t);
+
+    const nx = node => PAD.l + node.depth * colW;
+    const ny = node => node._py;
+
+    svg.appendChild(S('rect', { x: 0, y: 0, width: cW, height: cH, fill: T.bg }));
+
+    // Depth column dividers + column name labels (top)
+    for (let d = 0; d <= td; d++) {
+      const cx = PAD.l + d * colW;
+      if (d > 0) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: PAD.t - 8, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
+      const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
+      const lbl = S('text', { x: cx, y: 14, 'text-anchor': 'middle', 'font-size': 8, fill: T.hdr, 'dominant-baseline': 'middle', 'font-family': 'JetBrains Mono,monospace' });
+      lbl.textContent = label.length > 13 ? label.slice(0, 12) + '…' : label;
+      svg.appendChild(lbl);
+    }
+
+    const edgeG = S('g', {}); svg.appendChild(edgeG);
+    const nodeG = S('g', {}); svg.appendChild(nodeG);
+
+    function draw(node, parentNode) {
+      const x = nx(node), y = ny(node);
+      const isLeaf = node.collapsed || node.children.length === 0;
+      const isRoot = node.depth === 0;
+      const frac = node.featureIndices.length / Math.max(1, currentFeatures.length);
+      const r = Math.max(4, Math.min(12, 4 + frac * 30));
+      const sw = Math.max(0.8, Math.min(3, 0.8 + Math.log10(Math.max(2, node.featureIndices.length)) * 0.6));
+
+      if (parentNode) {
+        const px = nx(parentNode), py = ny(parentNode);
+        const mx = (px + x) / 2;
+        edgeG.appendChild(S('path', {
+          d: `M${px},${py} C${mx},${py} ${mx},${y} ${x},${y}`,
+          fill: 'none', stroke: node.color, 'stroke-width': sw,
+          opacity: isLeaf ? 0.9 : 0.5, 'stroke-linecap': 'round'
+        }));
+        // ── Level name label on edge midpoint ──
+        const edgeLabelDepth = node.depth - 1;
+        if (edgeLabelDepth < treeLevels.length && Math.abs(y - py) > 10) {
+          const midX = (px + x) / 2;
+          const midY = (py + y) / 2;
+          const cn = treeLevels[edgeLabelDepth].colName;
+          const shortCn = cn.length > 9 ? cn.slice(0, 8) + '…' : cn;
+          const tw = shortCn.length * 4.5 + 6;
+          edgeG.appendChild(S('rect', { x: midX - tw/2, y: midY - 5, width: tw, height: 10, rx: 2, fill: T.bg, opacity: 0.8 }));
+          const el = S('text', { x: midX, y: midY, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 7, fill: T.hdr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+          el.textContent = shortCn;
+          edgeG.appendChild(el);
+        }
+      }
+
+      const g = S('g', { class: 'node-g', transform: `translate(${x},${y})` });
+      if (isLeaf) g.appendChild(S('circle', { r: r + 5, fill: node.color, opacity: 0.1 }));
+      const circle = S('circle', { class: 'node-circle', r, fill: isLeaf ? node.color : (isRoot ? T.nodeRt : T.nodeInt), stroke: node.color, 'stroke-width': isLeaf ? 0 : 1.8, opacity: isLeaf ? 0.93 : 0.82 });
+      g.appendChild(circle);
+      if (node.collapsed && node.children.length > 0) {
+        const ch = S('text', { x: r + 3, y: 0, 'text-anchor': 'start', 'dominant-baseline': 'central', 'font-size': 7, fill: node.color, opacity: 0.9, 'pointer-events': 'none' });
+        ch.textContent = '▶'; g.appendChild(ch);
+      }
+      const raw = isRoot ? `ALL  n=${node.featureIndices.length}` : String(node.value);
+      const txt = raw.length > 17 ? raw.slice(0, 16) + '…' : raw;
+      const lbl = S('text', { x: r + 6, y: 0, 'text-anchor': 'start', 'dominant-baseline': 'central', 'font-size': isRoot ? 8 : 9, fill: isLeaf ? T.lblLeaf : T.lblInt, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+      lbl.textContent = txt; g.appendChild(lbl);
+      if (!isRoot && !isLeaf) {
+        const cnt = S('text', { x: r + 6, y: 10, 'text-anchor': 'start', 'font-size': 7.5, fill: T.cntClr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+        cnt.textContent = `n=${node.featureIndices.length}`; g.appendChild(cnt);
+      }
+
+      const tipHtml = () =>
+        `<strong style="color:${node.color}">${escHtml(String(node.value))}</strong><br>` +
+        `<span style="color:var(--muted)">${node.featureIndices.length} features · depth ${node.depth}</span>` +
+        (node.children.length > 0 ? `<br><span style="color:var(--accent2);font-size:9px">${node.collapsed ? 'Click to expand' : 'Click to collapse'}</span>` : '');
+      g.addEventListener('mouseenter', e => { circle.setAttribute('opacity', 1); showTreeTip(tipHtml(), e.clientX, e.clientY); });
+      g.addEventListener('mousemove', e => showTreeTip(tipHtml(), e.clientX, e.clientY));
+      g.addEventListener('mouseleave', () => { circle.setAttribute('opacity', isLeaf ? 0.93 : 0.82); hideTreeTip(); });
+      if (node.children.length > 0) {
+        g.style.cursor = 'pointer';
+        g.addEventListener('click', e => {
+          e.stopPropagation(); hideTreeTip();
+          node.collapsed = !node.collapsed;
+          _colorTree(treeRoot, 0, 1); featureColorMap.clear(); _buildColorMap(treeRoot);
+          drawDendrogram(); applyTreeColoring(); renderTreeLegend();
+        });
+      }
+      nodeG.appendChild(g);
+      if (!node.collapsed) node.children.forEach(c => draw(c, node));
+    }
+    draw(treeRoot, null);
+  }
+}
+
+// ── SVG element factory ──────────────────────────────────
+function S(tag, attrs) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+  return el;
+}
+
+// ── Apply colors to Leaflet map ──────────────────────────
+function applyTreeColoring() {
+  if (!geojsonLayer) return;
+  geojsonLayer.eachLayer(layer => {
+    const idx = layer.options._featureIdx;
+    if (idx === undefined) return;
+    const c = featureColorMap.get(idx) || '#888';
+    if (typeof layer.setStyle === 'function')
+      layer.setStyle({ color: c, fillColor: c, fillOpacity: Math.min(1, geoFillOpacity + 0.15), weight: 1.2, opacity: 0.9 });
+  });
+}
+
+// ── Legend ───────────────────────────────────────────────
+function renderTreeLegend() {
+  const bar = document.getElementById('treeLegendBar');
+  const items = document.getElementById('treeLegendItems');
+  if (!treeRoot || featureColorMap.size === 0) { bar.style.display = 'none'; return; }
+  const leaves = [];
+  function collect(node, path) {
+    if (node.collapsed || node.children.length === 0) { leaves.push({ color: node.color, label: path || 'All', n: node.featureIndices.length, node }); return; }
+    node.children.forEach(c => collect(c, (path ? path + ' \u203a ' : '') + String(c.value)));
+  }
+  collect(treeRoot, '');
+  document.getElementById('treeLegendCount').textContent = leaves.length;
+  bar.style.display = 'flex'; items.innerHTML = '';
+  leaves.forEach(({ color, label, n, node: ln }) => {
+    const item = document.createElement('div');
+    item.className = 'tli'; item.title = `${label}  (n=${n})`;
+    item.innerHTML = `<span class="tli-sw" style="background:${color}"></span><span class="tli-lbl">${escHtml(label)}</span>`;
+    item.addEventListener('mouseenter', () => {
+      if (!geojsonLayer) return;
+      const hi = new Set(ln.featureIndices);
+      geojsonLayer.eachLayer(layer => {
+        const idx = layer.options._featureIdx;
+        if (layer.setStyle) layer.setStyle(hi.has(idx)
+          ? { color: '#fff', weight: 2.5, fillOpacity: Math.min(1, geoFillOpacity + 0.35) }
+          : { opacity: 0.08, fillOpacity: 0.02 });
+      });
+    });
+    item.addEventListener('mouseleave', applyTreeColoring);
+    items.appendChild(item);
+  });
+}
+
+// ── Rebuild on feature update ────────────────────────────
+function rebuildTreeIfActive() {
+  if (treeLevels.length > 0 && treeRoot) buildTree();
+  else if (treeLevels.length > 0) treePopulatePicker();
+}
+
 </script>
 </body>
 </html>
