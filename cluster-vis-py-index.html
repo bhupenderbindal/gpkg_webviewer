@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cluster Validation</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; color: #222; }
+
+  #boot-overlay {
+    position: fixed; inset: 0; background: #1e1e2e;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; color: #cdd6f4;
+  }
+  #boot-overlay h2 { font-size: 1.4rem; margin-bottom: 1rem; }
+  #boot-progress { width: 340px; background: #313244; border-radius: 8px; height: 12px; overflow: hidden; }
+  #boot-bar { height: 100%; background: #89b4fa; width: 0%; transition: width 0.3s; border-radius: 8px; }
+  #boot-status { margin-top: 0.7rem; font-size: 0.82rem; color: #a6adc8; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+  h1 { font-size: 1.5rem; margin-bottom: 1.2rem; color: #1e3a5f; border-bottom: 2px solid #89b4fa; padding-bottom: 0.4rem; }
+  .section { background: #fff; border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .section-title { font-weight: 600; font-size: 0.95rem; color: #1e3a5f; margin-bottom: 0.7rem; border-bottom: 1px solid #e0e7f0; padding-bottom: 0.3rem; }
+
+  label { font-size: 0.85rem; display: block; margin-bottom: 0.25rem; color: #444; }
+  input[type=text], select { width: 100%; padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 5px; font-size: 0.85rem; background: #fafafa; }
+  select[multiple] { height: 120px; }
+  input[type=file] { font-size: 0.85rem; }
+  input[type=color] { height: 32px; width: 50px; padding: 2px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 180px; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+  .checkbox-row input[type=checkbox] { width: 16px; height: 16px; }
+
+  button { padding: 0.45rem 1.1rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.88rem; font-weight: 600; transition: background .15s; }
+  #load-btn { background: #3b82f6; color: #fff; }
+  #load-btn:hover { background: #2563eb; }
+  #run-btn { background: #16a34a; color: #fff; font-size: 0.95rem; padding: 0.55rem 1.4rem; }
+  #run-btn:hover:not(:disabled) { background: #15803d; }
+  #run-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+  #download-btn { background: #7c3aed; color: #fff; display: none; }
+  #download-btn:hover { background: #6d28d9; }
+
+  #load-status { font-size: 0.82rem; margin-top: 0.4rem; min-height: 1.2em; }
+  .ok { color: #16a34a; } .err { color: #dc2626; }
+
+  #scale-box { margin-top: 0.6rem; }
+  .scale-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem; }
+  .scale-row label { width: 200px; margin: 0; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scale-row select { width: 110px; font-size: 0.82rem; }
+
+  #log { background: #1e1e2e; color: #cdd6f4; padding: 0.7rem 0.9rem; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; white-space: pre-wrap; }
+
+  #plots-area { margin-top: 1rem; }
+  .plot-wrapper { margin-bottom: 1.2rem; text-align: center; }
+  .plot-wrapper img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.1); }
+  .plot-title { font-size: 0.82rem; color: #555; margin-bottom: 0.3rem; }
+
+  #spinner { display: none; align-items: center; gap: 0.6rem; color: #1e3a5f; font-size: 0.9rem; margin-top: 0.6rem; }
+  .spin { width: 20px; height: 20px; border: 3px solid #bfdbfe; border-top-color: #3b82f6; border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #out-dir-row { display: none; }
+</style>
+</head>
+<body>
+
+<div id="boot-overlay">
+  <h2>Loading Python environment&hellip;</h2>
+  <div id="boot-progress"><div id="boot-bar"></div></div>
+  <div id="boot-status">Initialising Pyodide&hellip;</div>
+</div>
+
+<div class="container">
+  <h1>Cluster Validation</h1>
+
+  <!-- Step 1: Load file -->
+  <div class="section">
+    <div class="section-title">1 — Load CSV</div>
+    <input type="file" id="file-input" accept=".csv">
+    <div style="margin-top:.5rem">
+      <button id="load-btn" disabled>Load CSV</button>
+    </div>
+    <div id="load-status"><i>No file loaded</i></div>
+  </div>
+
+  <!-- Step 2: Configure -->
+  <div class="section">
+    <div class="section-title">2 — Configure Parameters</div>
+    <div class="row">
+      <div class="col">
+        <label>Cluster Column</label>
+        <select id="cluster-col"></select>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:.8rem">
+      <div class="col">
+        <label>Boxplot Columns <small>(Ctrl+click multi-select)</small></label>
+        <select id="boxplot-cols" multiple></select>
+      </div>
+      <div class="col">
+        <label>Percentage Plot Columns</label>
+        <select id="pct-cols" multiple></select>
+      </div>
+      <div class="col">
+        <label>Sum Plot Columns</label>
+        <select id="sum-cols" multiple></select>
+      </div>
+    </div>
+
+    <div id="scale-box"></div>
+
+    <div class="row" style="margin-top:.8rem; align-items:center;">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <label style="margin:0">Boxplot colour</label>
+        <input type="color" id="boxplot-color" value="#7c7c0a">
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <label style="margin:0">Sum plot colour</label>
+        <input type="color" id="sum-color" value="#e7969c">
+      </div>
+    </div>
+
+    <div class="checkbox-row" style="margin-top:.8rem">
+      <input type="checkbox" id="random-cb">
+      <label style="margin:0" for="random-cb">Use random clusters</label>
+    </div>
+
+    <div class="checkbox-row" style="margin-top:.5rem">
+      <input type="checkbox" id="save-cb">
+      <label style="margin:0" for="save-cb">Download plots as PNG</label>
+    </div>
+  </div>
+
+  <!-- Step 3: Run -->
+  <div class="section">
+    <div class="section-title">3 — Run</div>
+    <button id="run-btn" disabled>Run Cluster Validation</button>
+    <div id="spinner"><div class="spin"></div> Running…</div>
+    <button id="download-btn" style="margin-top:.6rem">&#8659; Download all plots (ZIP)</button>
+  </div>
+
+  <!-- Log -->
+  <div class="section">
+    <div class="section-title">Console output</div>
+    <div id="log"></div>
+  </div>
+
+  <!-- Plots -->
+  <div id="plots-area"></div>
+</div>
+
+<script>
+// ── helpers ──────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function log(msg) {
+  const el = $('log');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function setBar(pct, status) {
+  $('boot-bar').style.width = pct + '%';
+  $('boot-status').textContent = status;
+}
+
+// ── boot Pyodide ─────────────────────────────────────────────────────────────
+let pyodide;
+const plotBlobs = [];   // { name, blob } for download
+
+async function boot() {
+  setBar(5, 'Loading Pyodide runtime…');
+  pyodide = await loadPyodide();
+  setBar(30, 'Installing micropip…');
+  await pyodide.loadPackage('micropip');
+  setBar(45, 'Installing numpy, pandas…');
+  await pyodide.loadPackage(['numpy', 'pandas']);
+  setBar(60, 'Installing matplotlib…');
+  await pyodide.loadPackage('matplotlib');
+  setBar(75, 'Installing seaborn…');
+  const micropip = pyodide.pyimport('micropip');
+  await micropip.install('seaborn');
+  setBar(90, 'Finalising…');
+
+  // redirect stdout/stderr to our log panel
+  pyodide.runPython(`
+import sys, io
+class _JSOut:
+    def __init__(self): self.buf = ''
+    def write(self, s):
+        import js
+        js.logFromPy(s)
+    def flush(self): pass
+sys.stdout = _JSOut()
+sys.stderr = _JSOut()
+`);
+
+  pyodide.globals.set('logFromPy_fn', s => log(s.trimEnd()));
+
+  // expose JS log function to Python
+  pyodide.runPython(`
+import js
+def _log(s):
+    js.logFromPy(s)
+`);
+
+  // inject core Python code
+  await pyodide.runPythonAsync(PYTHON_CODE);
+
+  setBar(100, 'Ready');
+  setTimeout(() => {
+    $('boot-overlay').style.display = 'none';
+    $('load-btn').disabled = false;
+  }, 400);
+}
+
+// ── Python code (embedded) ────────────────────────────────────────────────────
+const PYTHON_CODE = `
+import math, re, io, base64
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.ticker as ticker
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from pathlib import Path
+
+# ── helper ──────────────────────────────────────────────────────────────────
+def clean_string(s):
+    s = re.sub(r'[_-]', ' ', s)
+    s = re.sub(r'\\s+', ' ', s).strip().lower()
+    return s.capitalize()
+
+def fig_to_b64(fig):
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+    buf.seek(0)
+    return base64.b64encode(buf.read()).decode()
+
+# ── main function ────────────────────────────────────────────────────────────
+def cluster_validation_browser(
+    gdf,
+    boxplot_columns,
+    percentage_plot_columns,
+    sum_plot_columns,
+    bin_to_label,
+    cluster_col,
+    if_random=False,
+    boxplot_yscale=None,
+    boxplot_color="#7c7c0a",
+    sumplot_color="#e7969c",
+):
+    import js
+    if boxplot_yscale is None:
+        boxplot_yscale = {}
+
+    OUT_STR = cluster_col
+    images = []   # list of (title, b64_png)
+
+    if if_random:
+        num_cl = int(np.max(gdf["cluster_num"]))
+        cluster_col = "cluster_num_rand"
+        gdf = gdf.copy()
+        gdf[cluster_col] = np.random.randint(0, num_cl, gdf.shape[0])
+
+    plt.style.use("default")
+
+    # ── percentage plots ──────────────────────────────────────────────────
+    for col_x in percentage_plot_columns:
+        col_y = cluster_col
+        count_df = pd.crosstab(gdf[col_y], gdf[col_x])
+        pct_tbl = count_df.div(count_df.sum(axis=1), axis=0)
+        category_count_dict = {}
+        for r in pct_tbl.transpose().iterrows():
+            category_count_dict[r[0]] = list(r[1])
+        species = tuple(count_df.index)
+        width = 0.6
+        category_ = list(gdf[col_x])
+        if not bin_to_label:
+            bin_to_label_use = dict(zip(category_, category_))
+        else:
+            bin_to_label_use = bin_to_label
+
+        with mpl.rc_context({"font.size": 4, "font.weight": 2}):
+            fig, ax = plt.subplots(figsize=(7, 4))
+            bottom = np.zeros(len(species))
+            bin_colors = sns.color_palette("tab20", len(category_count_dict))
+            for category_, category_count in category_count_dict.items():
+                p = ax.bar(
+                    species, category_count, width,
+                    label=bin_to_label_use.get(category_, str(category_)),
+                    bottom=bottom,
+                    color=bin_colors[category_ - 1],
+                )
+                bottom += np.array(category_count)
+                ax.bar_label(p, label_type="center")
+            ax.set_title(f"{clean_string(col_x)} distribution in clusters")
+            ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0.0)
+            fig.tight_layout(rect=[0, 0, 0.80, 1])
+            images.append((f"Percentage — {col_x}", fig_to_b64(fig)))
+            plt.close(fig)
+
+    # ── boxplots ─────────────────────────────────────────────────────────
+    valid_bp = [c for c in boxplot_columns if c in gdf.columns]
+    if valid_bp:
+        cols = 2
+        rows = math.ceil(len(valid_bp) / cols)
+        fig, axs = plt.subplots(rows, cols, figsize=(15, 10), layout="constrained")
+        axs_flat = np.array(axs).flatten()
+        empty = rows * cols - len(valid_bp)
+        if empty == 1:
+            axs_flat[-1].axis('off')
+
+        for ax, col in zip(axs_flat, valid_bp):
+            scale = boxplot_yscale.get(col, "linear")
+            sns.boxplot(
+                x=cluster_col, y=col, orient="x", width=0.5,
+                data=gdf, ax=ax,
+                medianprops={"color": "r", "linewidth": 1},
+                showmeans=True,
+                meanprops={"markerfacecolor": "none"},
+                color=boxplot_color,
+            )
+            lbl = clean_string(col)
+            if scale != "linear":
+                ax.set_yscale(scale)
+                lbl += f" ({scale} scale)"
+            ax.set_ylabel(lbl)
+            ylo, yhi = ax.get_ylim()
+            yrange = yhi - ylo if (yhi - ylo) != 0 else 1.0
+            for i, cat in enumerate(np.sort(gdf[cluster_col].unique())):
+                count = len(gdf[gdf[cluster_col] == cat])
+                ax.text(i, yhi + yrange * 0.05, str(count), ha="center", size="x-small")
+            ax.set_ylim(ylo, yhi + yrange * 0.25)
+
+        images.append(("Boxplots — cluster properties", fig_to_b64(fig)))
+        plt.close(fig)
+
+    # ── sum bar plots ─────────────────────────────────────────────────────
+    valid_sp = [c for c in sum_plot_columns if c in gdf.columns]
+    if valid_sp:
+        cols = 2
+        rows = math.ceil(len(valid_sp) / cols)
+        fig, axs = plt.subplots(rows, cols, figsize=(15, 10), layout="constrained")
+        axs_flat = np.array(axs).flatten()
+        empty = rows * cols - len(valid_sp)
+        if empty == 1:
+            axs_flat[-1].axis('off')
+
+        for ax, col in zip(axs_flat, valid_sp):
+            sns.barplot(
+                gdf, y=cluster_col, x=col,
+                estimator="sum", errorbar=None, orient="y",
+                color=sumplot_color, ax=ax,
+            )
+            gp = gdf.groupby(cluster_col).agg(
+                **{f"sum_{col}": (col, "sum"), f"mean_{col}": (col, "mean")}
+            )
+            ax.bar_label(
+                ax.containers[0],
+                labels=[f"{round(x, 2)} " for x in gp[f"mean_{col}"]],
+                fontsize=5,
+            )
+            ax.set_xlabel(f"total {clean_string(col)}")
+
+        images.append(("Sum bar plots — cluster properties", fig_to_b64(fig)))
+        plt.close(fig)
+
+    return images
+
+print("Python environment ready.")
+`;
+
+// ── JS ↔ Python bridge ────────────────────────────────────────────────────────
+window.logFromPy = s => log(s);
+
+let csvData = null;   // raw CSV text
+
+$('file-input').addEventListener('change', async () => {
+  const file = $('file-input').files[0];
+  if (!file) return;
+  csvData = await file.text();
+  $('load-btn').disabled = false;
+});
+
+$('load-btn').addEventListener('click', async () => {
+  if (!csvData) { alert('Please choose a CSV file first.'); return; }
+  $('load-status').innerHTML = '<i>Loading…</i>';
+  try {
+    // Push CSV text into Python and parse it
+    pyodide.globals.set('_csv_text', csvData);
+    await pyodide.runPythonAsync(`
+import io, pandas as pd
+_gdf = pd.read_csv(io.StringIO(_csv_text))
+_numeric_cols = _gdf.select_dtypes(include='number').columns.tolist()
+_exclude = {'field_1', 'TOPOI_ID', 'geometry'}
+_numeric_cols = [c for c in _numeric_cols if c not in _exclude]
+_all_cols = [c for c in _gdf.columns if c not in {'geometry', 'field_1'}]
+print(f"Loaded {len(_gdf)} rows × {len(_gdf.columns)} columns")
+print("Columns:", list(_gdf.columns))
+`);
+    const numericCols = pyodide.globals.get('_numeric_cols').toJs();
+    const allCols     = pyodide.globals.get('_all_cols').toJs();
+    const nrows       = pyodide.runPython('len(_gdf)');
+
+    populateSelect('cluster-col', allCols, ['depth_300']);
+    populateSelect('boxplot-cols', numericCols,
+      ['total_buildings','total_vol','settlement_perimeter','compactness','built_up_area','agri_ratio']);
+    populateSelect('pct-cols', numericCols, ['richness']);
+    populateSelect('sum-cols', numericCols, ['built_up_area']);
+
+    $('load-status').innerHTML = `<span class="ok">✓ Loaded ${nrows} rows, ${allCols.length} columns</span>`;
+    $('run-btn').disabled = false;
+    rebuildScaleRows();
+  } catch(e) {
+    $('load-status').innerHTML = `<span class="err">✗ ${e.message}</span>`;
+    log('Error: ' + e.message);
+  }
+});
+
+function populateSelect(id, options, defaults) {
+  const el = $(id);
+  el.innerHTML = '';
+  for (const o of options) {
+    const opt = document.createElement('option');
+    opt.value = opt.textContent = o;
+    if (defaults.includes(o)) opt.selected = true;
+    el.appendChild(opt);
+  }
+}
+
+function getSelected(id) {
+  return Array.from($(id).selectedOptions).map(o => o.value);
+}
+
+// ── scale dropdowns ───────────────────────────────────────────────────────────
+$('boxplot-cols').addEventListener('change', rebuildScaleRows);
+
+function rebuildScaleRows() {
+  const box = $('scale-box');
+  const selected = getSelected('boxplot-cols');
+  if (!selected.length) { box.innerHTML = ''; return; }
+
+  // preserve existing choices
+  const prev = {};
+  box.querySelectorAll('.scale-row').forEach(row => {
+    const lbl = row.querySelector('label').title;
+    const val = row.querySelector('select').value;
+    prev[lbl] = val;
+  });
+
+  let html = '<div style="font-weight:600;font-size:.85rem;margin:.6rem 0 .3rem">Boxplot Y-axis scale</div>';
+  for (const col of selected) {
+    const val = prev[col] || 'linear';
+    html += `<div class="scale-row">
+      <label title="${col}">${col}</label>
+      <select data-col="${col}">
+        <option${val==='linear'?' selected':''}>linear</option>
+        <option${val==='log'?' selected':''}>log</option>
+        <option${val==='symlog'?' selected':''}>symlog</option>
+      </select>
+    </div>`;
+  }
+  box.innerHTML = html;
+}
+
+function getScaleMap() {
+  const m = {};
+  $('scale-box').querySelectorAll('.scale-row').forEach(row => {
+    m[row.querySelector('[data-col]').dataset.col] = row.querySelector('select').value;
+  });
+  return m;
+}
+
+// ── run ───────────────────────────────────────────────────────────────────────
+$('run-btn').addEventListener('click', async () => {
+  $('plots-area').innerHTML = '';
+  plotBlobs.length = 0;
+  $('download-btn').style.display = 'none';
+  $('log').textContent = '';
+  $('spinner').style.display = 'flex';
+  $('run-btn').disabled = true;
+
+  const params = {
+    cluster_col:   $('cluster-col').value,
+    boxplot_cols:  getSelected('boxplot-cols'),
+    pct_cols:      getSelected('pct-cols'),
+    sum_cols:      getSelected('sum-cols'),
+    boxplot_color: $('boxplot-color').value,
+    sum_color:     $('sum-color').value,
+    if_random:     $('random-cb').checked,
+    scale_map:     getScaleMap(),
+  };
+
+  log('Running cluster_validation…');
+  log(`  cluster_col: ${params.cluster_col}`);
+  log(`  boxplot_cols: ${params.boxplot_cols}`);
+  log(`  pct_cols: ${params.pct_cols}`);
+  log(`  sum_cols: ${params.sum_cols}`);
+  log(`  yscale map: ${JSON.stringify(params.scale_map)}`);
+  log('─'.repeat(50));
+
+  pyodide.globals.set('_p_cluster_col',   params.cluster_col);
+  pyodide.globals.set('_p_boxplot_cols',  pyodide.toPy(params.boxplot_cols));
+  pyodide.globals.set('_p_pct_cols',      pyodide.toPy(params.pct_cols));
+  pyodide.globals.set('_p_sum_cols',      pyodide.toPy(params.sum_cols));
+  pyodide.globals.set('_p_boxplot_color', params.boxplot_color);
+  pyodide.globals.set('_p_sum_color',     params.sum_color);
+  pyodide.globals.set('_p_if_random',     params.if_random);
+  pyodide.globals.set('_p_scale_map',     pyodide.toPy(params.scale_map));
+
+  try {
+    await pyodide.runPythonAsync(`
+_images = cluster_validation_browser(
+    gdf=_gdf,
+    boxplot_columns=list(_p_boxplot_cols),
+    percentage_plot_columns=list(_p_pct_cols),
+    sum_plot_columns=list(_p_sum_cols),
+    bin_to_label=None,
+    cluster_col=_p_cluster_col,
+    if_random=bool(_p_if_random),
+    boxplot_yscale=dict(_p_scale_map),
+    boxplot_color=_p_boxplot_color,
+    sumplot_color=_p_sum_color,
+)
+print("Done!")
+`);
+
+    const images = pyodide.globals.get('_images').toJs();
+    const plotsDiv = $('plots-area');
+    images.forEach(([title, b64], i) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'plot-wrapper';
+      wrapper.innerHTML = `<div class="plot-title">${title}</div>
+        <img src="data:image/png;base64,${b64}" alt="${title}">`;
+      plotsDiv.appendChild(wrapper);
+
+      // store blob for download
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let j = 0; j < binary.length; j++) bytes[j] = binary.charCodeAt(j);
+      plotBlobs.push({ name: `plot_${i+1}_${title.replace(/[^a-z0-9]/gi,'_')}.png`, blob: new Blob([bytes], {type:'image/png'}) });
+    });
+
+    if ($('save-cb').checked && plotBlobs.length > 0) {
+      $('download-btn').style.display = 'inline-block';
+    }
+  } catch(e) {
+    log('ERROR: ' + e.message);
+  } finally {
+    $('spinner').style.display = 'none';
+    $('run-btn').disabled = false;
+  }
+});
+
+// ── download ZIP ──────────────────────────────────────────────────────────────
+$('download-btn').addEventListener('click', async () => {
+  // use JSZip from CDN (loaded lazily)
+  if (!window.JSZip) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  }
+  const zip = new JSZip();
+  plotBlobs.forEach(({name, blob}) => zip.file(name, blob));
+  const content = await zip.generateAsync({type:'blob'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(content);
+  a.download = 'cluster_validation_plots.zip';
+  a.click();
+});
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+boot().catch(e => {
+  $('boot-status').textContent = 'Error: ' + e.message;
+  $('boot-status').style.color = '#f38ba8';
+});
+</script>
+</body>
+</html>

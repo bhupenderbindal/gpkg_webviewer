@@ -24,671 +24,293 @@
   --danger:  #f04f30;
   --sz: 11px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--sz);
-  background: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  user-select: none;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'JetBrains Mono',monospace;font-size:var(--sz);background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
 
-/* ── Header ──────────────────────────────────────── */
-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  flex-shrink: 0;
-  height: 32px;
-}
-header h1 {
-  font-family: 'Fraunces', serif;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--accent);
-  letter-spacing: -0.02em;
-}
-header .tag {
-  font-size: 0.6rem;
-  color: var(--muted);
-  padding: 1px 4px;
-  border: 1px solid var(--border2);
-  border-radius: 2px;
-}
-.status-bar { margin-left: auto; font-size: 0.65rem; color: var(--muted); max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.status-bar.active { color: var(--accent2); }
+/* Header */
+header{display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;height:32px}
+header h1{font-family:'Fraunces',serif;font-size:.95rem;font-weight:600;color:var(--accent);letter-spacing:-.02em}
+header .tag{font-size:.6rem;color:var(--muted);padding:1px 4px;border:1px solid var(--border2);border-radius:2px}
+.status-bar{margin-left:auto;font-size:.65rem;color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.status-bar.active{color:var(--accent2)}
 
-/* ── App body: 3 columns ──────────────────────────── */
-.app-body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
+/* App body */
+.app-body{display:flex;flex:1;overflow:hidden}
 
-/* ── Col 1: Layer/Upload sidebar ─────────────────── */
-.sidebar {
-  width: 190px;
-  min-width: 130px;
-  max-width: 400px;
-  flex-shrink: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-.sidebar-content {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-height: 0;
-}
-.sidebar-content::-webkit-scrollbar { width: 3px; }
-.sidebar-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+/* Col 1 – sidebar */
+.sidebar{width:190px;min-width:120px;max-width:400px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.sidebar-content{flex:1;overflow-y:auto;overflow-x:hidden;padding:5px;display:flex;flex-direction:column;gap:5px;min-height:0}
+.sidebar-content::-webkit-scrollbar{width:3px}
+.sidebar-content::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+#colSection{display:flex;flex-direction:column;flex:1;min-height:0}
+.col-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.col-list::-webkit-scrollbar{width:3px}
+.col-list::-webkit-scrollbar-thumb{background:var(--border2)}
 
-/* Col-list grows to fill all available space */
-#colSection {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-.col-list {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  min-height: 0;
-}
-.col-list::-webkit-scrollbar { width: 3px; }
-.col-list::-webkit-scrollbar-thumb { background: var(--border2); }
+/* Col 2 – filter panel */
+.filter-panel-col{width:220px;min-width:150px;max-width:420px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.filter-panel-col-head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid var(--border);flex-shrink:0;gap:4px}
+.fp-title{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.filter-panel-col-actions{display:flex;gap:3px;align-items:center}
+.filter-panel-col-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px;display:flex;flex-direction:column;gap:4px;min-height:0}
+.filter-panel-col-body::-webkit-scrollbar{width:3px}
+.filter-panel-col-body::-webkit-scrollbar-thumb{background:var(--border2)}
+.filter-panel-col-foot{display:flex;align-items:center;gap:5px;padding:4px 6px;border-top:1px solid var(--border);flex-shrink:0}
+.result-info{font-size:.65rem;color:var(--muted)}
+.result-info strong{color:var(--accent)}
+.no-filters-msg{font-size:.65rem;color:var(--muted);padding:10px 4px;line-height:1.6;text-align:center}
 
-/* ── Col 2: Filter panel (vertical) ──────────────── */
-.filter-panel-col {
-  width: 220px;
-  min-width: 150px;
-  max-width: 420px;
-  flex-shrink: 0;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-}
-.filter-panel-col-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-  gap: 4px;
-}
-.filter-panel-col-head .fp-title {
-  font-size: 0.6rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.filter-panel-col-actions {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-}
-.btn-sm {
-  font-family: inherit;
-  font-size: 0.62rem;
-  padding: 2px 6px;
-  border-radius: 2px;
-  cursor: pointer;
-  border: 1px solid var(--border2);
-  background: none;
-  color: var(--muted);
-  transition: color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-.btn-sm:hover { color: var(--text); border-color: var(--border2); }
-.btn-sm.accent { background: var(--accent); color: #0d0f12; border-color: var(--accent); font-weight: 700; }
-.btn-sm.accent:hover { opacity: 0.85; }
-.btn-sm.danger:hover { color: var(--danger); border-color: var(--danger); }
+/* Filter cards */
+.fcard{background:var(--panel2);border:1px solid var(--border2);border-radius:3px;flex-shrink:0}
+.fcard-head{display:flex;align-items:center;padding:3px 5px;border-bottom:1px solid var(--border);gap:4px}
+.fcard-colname{flex:1;font-size:.68rem;font-weight:600;color:var(--accent2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fcard-colname.num{color:var(--accent)}
+.type-dot{width:5px;height:5px;border-radius:50%;background:var(--accent2);flex-shrink:0}
+.type-dot.num{background:var(--accent)}
+.fcard-remove{cursor:pointer;color:var(--muted);font-size:.9rem;line-height:1;padding:0 1px;transition:color .12s}
+.fcard-remove:hover{color:var(--danger)}
+.fcard-body{padding:4px 5px}
+.range-inputs{display:flex;align-items:center;gap:3px}
+.range-inputs input[type=number]{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.68rem;padding:2px 4px;border-radius:2px;outline:none;height:20px}
+.range-inputs input[type=number]:focus{border-color:var(--accent)}
+.range-inputs span{color:var(--muted);font-size:.65rem;flex-shrink:0}
+.ms-trigger{display:flex;align-items:center;gap:3px;padding:0 5px;height:20px;background:var(--bg);border:1px solid var(--border2);border-radius:2px;cursor:pointer;font-size:.67rem;color:var(--text);width:100%;overflow:hidden}
+.ms-trigger:hover{border-color:var(--accent2)}
+.ms-trigger .ms-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ms-trigger svg{flex-shrink:0}
+.ms-selected-preview{margin-top:3px;display:flex;flex-wrap:wrap;gap:2px}
+.ms-val-tag{background:rgba(48,245,200,.12);border:1px solid rgba(48,245,200,.25);color:var(--accent2);font-size:.6rem;padding:0 3px;border-radius:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-val-tag.more{background:rgba(90,96,114,.15);border-color:var(--border2);color:var(--muted)}
 
-.filter-panel-col-body {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 0;
-}
-.filter-panel-col-body::-webkit-scrollbar { width: 3px; }
-.filter-panel-col-body::-webkit-scrollbar-thumb { background: var(--border2); }
+/* Dropdown */
+.ms-dropdown{position:fixed;z-index:2000;background:var(--panel2);border:1px solid var(--border2);border-radius:3px;box-shadow:0 8px 24px rgba(0,0,0,.6);display:none;flex-direction:column;width:240px;max-height:280px;overflow:hidden}
+.ms-dropdown.open{display:flex}
+.ms-dd-search{padding:4px 5px;border-bottom:1px solid var(--border);flex-shrink:0}
+.ms-dd-search input{width:100%;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.68rem;padding:3px 6px;border-radius:2px;outline:none}
+.ms-dd-search input:focus{border-color:var(--accent2)}
+.ms-dd-actions{display:flex;gap:3px;padding:3px 5px;border-bottom:1px solid var(--border);align-items:center;flex-shrink:0}
+.ms-dd-actions button{font-family:inherit;font-size:.62rem;background:none;border:1px solid var(--border2);color:var(--muted);padding:1px 5px;border-radius:2px;cursor:pointer}
+.ms-dd-actions button:hover{color:var(--accent);border-color:var(--accent)}
+.ms-dd-count{font-size:.6rem;color:var(--muted);margin-left:auto}
+.ms-dd-list{overflow-y:auto;flex:1;min-height:0}
+.ms-dd-list::-webkit-scrollbar{width:3px}
+.ms-dd-list::-webkit-scrollbar-thumb{background:var(--border2)}
+.ms-dd-list label{display:flex;align-items:center;gap:6px;padding:3px 7px;font-size:.68rem;cursor:pointer;transition:background .1s;word-break:break-all}
+.ms-dd-list label:hover{background:var(--border)}
+.ms-dd-list input[type=checkbox]{accent-color:var(--accent);flex-shrink:0}
 
-.filter-panel-col-foot {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 6px;
-  border-top: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.result-info { font-size: 0.65rem; color: var(--muted); }
-.result-info strong { color: var(--accent); }
+/* Buttons */
+.btn-sm{font-family:inherit;font-size:.62rem;padding:2px 6px;border-radius:2px;cursor:pointer;border:1px solid var(--border2);background:none;color:var(--muted);transition:color .15s,border-color .15s;white-space:nowrap}
+.btn-sm:hover{color:var(--text);border-color:var(--border2)}
+.btn-sm.accent{background:var(--accent);color:#0d0f12;border-color:var(--accent);font-weight:700}
+.btn-sm.accent:hover{opacity:.85}
+.btn-sm.danger:hover{color:var(--danger);border-color:var(--danger)}
 
-.no-filters-msg {
-  font-size: 0.65rem;
-  color: var(--muted);
-  padding: 10px 4px;
-  line-height: 1.6;
-  text-align: center;
-}
+/* Map col */
+.map-col{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;position:relative}
+#map{flex:1;min-height:0;background:#0a0c0f}
 
-/* ── Filter cards (vertical stacked) ─────────────── */
-.fcard {
-  background: var(--panel2);
-  border: 1px solid var(--border2);
-  border-radius: 3px;
-  overflow: visible;
-  flex-shrink: 0;
-}
-.fcard-head {
-  display: flex;
-  align-items: center;
-  padding: 3px 5px;
-  border-bottom: 1px solid var(--border);
-  gap: 4px;
-}
-.fcard-colname {
-  flex: 1;
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--accent2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fcard-colname.num { color: var(--accent); }
-.type-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--accent2);
-  flex-shrink: 0;
-}
-.type-dot.num { background: var(--accent); }
-.fcard-remove {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1;
-  padding: 0 1px;
-  transition: color 0.12s;
-}
-.fcard-remove:hover { color: var(--danger); }
-.fcard-body { padding: 4px 5px; }
+/* Basemap bar */
+.top-bar{display:flex;align-items:center;gap:0;padding:2px 4px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;flex-wrap:wrap;row-gap:2px}
+.basemap-btn{font-family:inherit;font-size:.6rem;padding:2px 7px;background:none;border:1px solid var(--border2);color:var(--muted);cursor:pointer;transition:all .15s;border-radius:0;margin-right:-1px;height:22px}
+.basemap-btn:first-of-type{border-radius:2px 0 0 2px}
+.basemap-btn.bm-last{border-radius:0 2px 2px 0;margin-right:6px}
+.basemap-btn.active{background:var(--panel2);color:var(--text);border-color:var(--accent2);z-index:1}
+.basemap-btn:hover:not(.active){color:var(--text)}
+.top-bar-sep{width:1px;height:18px;background:var(--border2);margin:0 4px}
 
-/* Range inputs */
-.range-inputs {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.range-inputs input[type=number] {
-  flex: 1;
-  min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.68rem;
-  padding: 2px 4px;
-  border-radius: 2px;
-  outline: none;
-  height: 20px;
-}
-.range-inputs input[type=number]:focus { border-color: var(--accent); }
-.range-inputs span { color: var(--muted); font-size: 0.65rem; flex-shrink: 0; }
+/* Color picker row */
+.color-row{display:flex;align-items:center;gap:5px}
+.color-row label{font-size:.6rem;color:var(--muted)}
+input[type=color].geo-color{width:22px;height:22px;border:1px solid var(--border2);border-radius:2px;cursor:pointer;padding:1px;background:var(--panel2)}
+.opacity-row{display:flex;align-items:center;gap:4px}
+.opacity-row label{font-size:.6rem;color:var(--muted)}
+input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer}
+.op-val{font-size:.6rem;color:var(--muted);min-width:22px}
 
-/* Multi-select trigger */
-.ms-trigger {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0 5px;
-  height: 20px;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 0.67rem;
-  color: var(--text);
-  width: 100%;
-  overflow: hidden;
-}
-.ms-trigger:hover { border-color: var(--accent2); }
-.ms-trigger .ms-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-width: 0;
-}
-.ms-trigger svg { flex-shrink: 0; }
+/* Distribution panel */
+.dist-panel{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--border);display:flex;flex-direction:column;z-index:500}
+.dist-panel.hidden{display:none}
+.dist-panel-head{display:flex;align-items:center;gap:6px;padding:3px 8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.dist-panel-title{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.dist-panel-body{display:flex;overflow-x:auto;overflow-y:hidden;flex:1;gap:0;min-height:0;padding:0}
+.dist-panel-body::-webkit-scrollbar{height:3px}
+.dist-panel-body::-webkit-scrollbar-thumb{background:var(--border2)}
+.dist-resize{height:5px;cursor:row-resize;background:transparent;flex-shrink:0}
+.dist-resize:hover{background:var(--accent);opacity:.4}
+.plot-wrap{flex-shrink:0;border-right:1px solid var(--border);position:relative}
+.plot-wrap canvas{display:block}
+.plot-label{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:.58rem;color:var(--muted);pointer-events:none}
 
-/* Selected values preview */
-.ms-selected-preview {
-  margin-top: 3px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-}
-.ms-val-tag {
-  background: rgba(48, 245, 200, 0.12);
-  border: 1px solid rgba(48, 245, 200, 0.25);
-  color: var(--accent2);
-  font-size: 0.6rem;
-  padding: 0 3px;
-  border-radius: 2px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ms-val-tag.more {
-  background: rgba(90,96,114,0.15);
-  border-color: var(--border2);
-  color: var(--muted);
-}
+/* Column picker dist checkbox */
+.col-item-dist{font-size:.58rem;cursor:pointer;color:var(--muted);flex-shrink:0;margin-left:2px;padding:0 1px;border:1px solid transparent;border-radius:2px;transition:all .1s;line-height:1}
+.col-item-dist:hover{color:var(--accent2);border-color:var(--accent2)}
+.col-item-dist.active{color:var(--accent2);border-color:var(--accent2);background:rgba(48,245,200,.1)}
 
-/* ── Singleton dropdown ───────────────────────────── */
-.ms-dropdown {
-  position: fixed;
-  z-index: 2000;
-  background: var(--panel2);
-  border: 1px solid var(--border2);
-  border-radius: 3px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
-  display: none;
-  flex-direction: column;
-  width: 240px;
-  max-height: 280px;
-  overflow: hidden;
-}
-.ms-dropdown.open { display: flex; }
-.ms-dd-search {
-  padding: 4px 5px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.ms-dd-search input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.68rem;
-  padding: 3px 6px;
-  border-radius: 2px;
-  outline: none;
-}
-.ms-dd-search input:focus { border-color: var(--accent2); }
-.ms-dd-actions {
-  display: flex;
-  gap: 3px;
-  padding: 3px 5px;
-  border-bottom: 1px solid var(--border);
-  align-items: center;
-  flex-shrink: 0;
-}
-.ms-dd-actions button {
-  font-family: inherit;
-  font-size: 0.62rem;
-  background: none;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  padding: 1px 5px;
-  border-radius: 2px;
-  cursor: pointer;
-}
-.ms-dd-actions button:hover { color: var(--accent); border-color: var(--accent); }
-.ms-dd-count { font-size: 0.6rem; color: var(--muted); margin-left: auto; }
-.ms-dd-list {
-  overflow-y: auto;
-  flex: 1;
-  min-height: 0;
-}
-.ms-dd-list::-webkit-scrollbar { width: 3px; }
-.ms-dd-list::-webkit-scrollbar-thumb { background: var(--border2); }
-.ms-dd-list label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 7px;
-  font-size: 0.68rem;
-  cursor: pointer;
-  transition: background 0.1s;
-  word-break: break-all;
-}
-.ms-dd-list label:hover { background: var(--border); }
-.ms-dd-list input[type=checkbox] { accent-color: var(--accent); flex-shrink: 0; }
+/* Sidebar shared */
+.upload-zone{border:1px dashed var(--border2);border-radius:3px;padding:10px 6px;text-align:center;cursor:pointer;transition:all .2s;position:relative;flex-shrink:0}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(200,245,48,.04)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-zone .icon{font-size:1.1rem;margin-bottom:3px}
+.upload-zone p{font-size:.6rem;color:var(--muted)}
+.upload-zone strong{color:var(--accent);font-size:.65rem;display:block;margin-bottom:1px}
+.section-title{font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding-bottom:3px;border-bottom:1px solid var(--border);margin-bottom:3px;flex-shrink:0}
+.layer-select{width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.68rem;padding:3px 5px;border-radius:2px;cursor:pointer;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23546070' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 5px center;flex-shrink:0}
+.layer-select:focus{border-color:var(--accent)}
+.col-item{display:flex;align-items:center;gap:4px;padding:2px 3px;border-radius:2px;cursor:pointer;font-size:.67rem;transition:background .1s}
+.col-item:hover{background:var(--panel3)}
+.col-item input[type=checkbox]{accent-color:var(--accent);cursor:pointer;flex-shrink:0;width:11px;height:11px}
+.col-item .col-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col-item .type-badge{font-size:.55rem;padding:0 3px;border-radius:2px;background:var(--bg);color:var(--muted);flex-shrink:0}
+.col-item .type-badge.num{color:var(--accent)}
+.no-data{padding:10px 4px;text-align:center;color:var(--muted);font-size:.67rem;line-height:1.7;flex-shrink:0}
+.debug-info{font-size:.58rem;color:var(--muted);padding:3px 5px;background:var(--panel2);border:1px solid var(--border);border-radius:2px;word-break:break-all;line-height:1.5;flex-shrink:0}
 
-/* ── Map area ─────────────────────────────────────── */
-.map-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  min-width: 0;
-  position: relative;
-}
-#map { flex: 1; min-height: 0; background: #0a0c0f; }
+/* Resize handles */
+.resize-handle-v{position:absolute;right:-3px;top:0;bottom:0;width:6px;cursor:col-resize;z-index:10;background:transparent}
+.resize-handle-v:hover,.resize-handle-v.active{background:var(--accent);opacity:.4;border-radius:3px}
 
-/* Hover tooltip (wider, custom) */
-.geo-tooltip {
-  position: fixed;
-  z-index: 1500;
-  background: var(--panel2);
-  border: 1px solid var(--border2);
-  border-radius: 4px;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.7);
-  padding: 6px 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text);
-  pointer-events: none;
-  display: none;
-  max-width: 420px;
-  min-width: 200px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-.geo-tooltip table { border-collapse: collapse; width: 100%; }
-.geo-tooltip td { padding: 1px 0; vertical-align: top; }
-.geo-tooltip td:first-child {
-  color: var(--muted);
-  padding-right: 8px;
-  white-space: nowrap;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.geo-tooltip td:last-child {
-  color: var(--text);
-  word-break: break-word;
-  max-width: 240px;
-}
+/* Overlay */
+.overlay{position:fixed;inset:0;background:rgba(13,15,18,.88);display:flex;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(3px)}
+.overlay.hidden{display:none}
+.spinner{text-align:center;color:var(--accent);font-size:.8rem}
+.spinner-ring{width:30px;height:30px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── Resize handles ───────────────────────────────── */
-.resize-handle-v {
-  position: absolute;
-  right: -3px; top: 0; bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  z-index: 10;
-  background: transparent;
-}
-.resize-handle-v:hover, .resize-handle-v.active { background: var(--accent); opacity: 0.4; border-radius: 3px; }
-
-/* ── Sidebar shared components ───────────────────── */
-.upload-zone {
-  border: 1px dashed var(--border2);
-  border-radius: 3px;
-  padding: 10px 6px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-  flex-shrink: 0;
-}
-.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(200,245,48,0.04); }
-.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-.upload-zone .icon { font-size: 1.1rem; margin-bottom: 3px; }
-.upload-zone p { font-size: 0.6rem; color: var(--muted); }
-.upload-zone strong { color: var(--accent); font-size: 0.65rem; display: block; margin-bottom: 1px; }
-
-.section-title {
-  font-size: 0.58rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 3px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 3px;
-  flex-shrink: 0;
-}
-.layer-select {
-  width: 100%;
-  background: var(--panel2);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.68rem;
-  padding: 3px 5px;
-  border-radius: 2px;
-  cursor: pointer;
-  outline: none;
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23546070' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 5px center;
-  flex-shrink: 0;
-}
-.layer-select:focus { border-color: var(--accent); }
-
-.col-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 3px;
-  border-radius: 2px;
-  cursor: pointer;
-  font-size: 0.67rem;
-  transition: background 0.1s;
-}
-.col-item:hover { background: var(--panel3); }
-.col-item input[type=checkbox] { accent-color: var(--accent); cursor: pointer; flex-shrink: 0; width: 11px; height: 11px; }
-.col-item .col-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.col-item .type-badge {
-  font-size: 0.55rem;
-  padding: 0 3px;
-  border-radius: 2px;
-  background: var(--bg);
-  color: var(--muted);
-  flex-shrink: 0;
-}
-.col-item .type-badge.num { color: var(--accent); }
-
-.no-data {
-  padding: 10px 4px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.67rem;
-  line-height: 1.7;
-  flex-shrink: 0;
-}
-.debug-info {
-  font-size: 0.58rem;
-  color: var(--muted);
-  padding: 3px 5px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
-  border-radius: 2px;
-  word-break: break-all;
-  line-height: 1.5;
-  flex-shrink: 0;
-}
-
-/* ── Basemap selector ─────────────────────────────── */
-.basemap-bar {
-  display: flex;
-  gap: 0;
-  padding: 2px 4px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-  flex-shrink: 0;
-}
-.basemap-btn {
-  font-family: inherit;
-  font-size: 0.6rem;
-  padding: 2px 8px;
-  background: none;
-  border: 1px solid var(--border2);
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
-  border-radius: 0;
-  margin-right: -1px;
-}
-.basemap-btn:first-child { border-radius: 2px 0 0 2px; }
-.basemap-btn:last-child { border-radius: 0 2px 2px 0; margin-right: 0; }
-.basemap-btn.active { background: var(--panel2); color: var(--text); border-color: var(--accent2); z-index: 1; }
-.basemap-btn:hover:not(.active) { color: var(--text); border-color: var(--border2); }
-
-/* ── Overlay ──────────────────────────────────────── */
-.overlay {
-  position: fixed; inset: 0;
-  background: rgba(13,15,18,0.88);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999; backdrop-filter: blur(3px);
-}
-.overlay.hidden { display: none; }
-.spinner { text-align: center; color: var(--accent); font-size: 0.8rem; }
-.spinner-ring {
-  width: 30px; height: 30px;
-  border: 2px solid var(--border2);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 8px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
+/* Hover tooltip */
+.geo-tooltip{position:fixed;z-index:1500;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.7);padding:6px 8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);pointer-events:none;display:none;max-width:440px;min-width:200px;max-height:320px;overflow-y:auto}
+.geo-tooltip table{border-collapse:collapse;width:100%}
+.geo-tooltip td{padding:1px 0;vertical-align:top}
+.geo-tooltip td:first-child{color:var(--muted);padding-right:8px;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis}
+.geo-tooltip td:last-child{color:var(--text);word-break:break-word;max-width:260px}
 </style>
 </head>
 <body>
 
-<!-- Loading overlay -->
-<div class="overlay" id="overlay">
-  <div class="spinner"><div class="spinner-ring"></div><div id="overlay-msg">Loading…</div></div>
-</div>
-
-<!-- Hover tooltip -->
+<div class="overlay" id="overlay"><div class="spinner"><div class="spinner-ring"></div><div id="overlay-msg">Loading…</div></div></div>
 <div class="geo-tooltip" id="geoTooltip"></div>
 
 <!-- Singleton dropdown -->
 <div class="ms-dropdown" id="msDropdown">
   <div class="ms-dd-search"><input type="text" placeholder="Search values…" id="msSearch"></div>
-  <div class="ms-dd-actions">
-    <button id="msAll">All</button>
-    <button id="msNone">None</button>
-    <span class="ms-dd-count" id="msCount"></span>
-  </div>
+  <div class="ms-dd-actions"><button id="msAll">All</button><button id="msNone">None</button><span class="ms-dd-count" id="msCount"></span></div>
   <div class="ms-dd-list" id="msList"></div>
 </div>
 
 <header>
-  <h1>GeoFilter</h1>
-  <span class="tag">.gpkg</span>
+  <h1>GeoFilter</h1><span class="tag">.gpkg</span>
   <div class="status-bar" id="statusBar">No file loaded</div>
 </header>
 
 <div class="app-body">
 
-  <!-- Col 1: Upload + Layer + Column picker -->
+  <!-- Col 1: sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-content">
       <div class="upload-zone" id="uploadZone">
         <input type="file" id="fileInput" accept=".gpkg"/>
-        <div class="icon">📦</div>
-        <strong>Drop .gpkg here</strong>
-        <p>or click to browse</p>
+        <div class="icon">📦</div><strong>Drop .gpkg here</strong><p>or click to browse</p>
       </div>
-
       <div class="no-data" id="noDataMsg">Load a .gpkg file to start.</div>
-
       <div id="layerSection" style="display:none;flex-shrink:0">
         <div class="section-title">Layer</div>
         <select class="layer-select" id="layerSelect"></select>
       </div>
-
       <div id="colSection" style="display:none">
-        <div class="section-title">Columns — check to filter</div>
+        <div class="section-title">Columns — ✓ filter / 📊 plot</div>
         <div class="col-list" id="colList"></div>
       </div>
-
       <div id="debugInfo" class="debug-info" style="display:none"></div>
     </div>
     <div class="resize-handle-v" id="rHandleV1"></div>
   </div>
 
-  <!-- Col 2: Active filters (vertical) -->
+  <!-- Col 2: filter panel -->
   <div class="filter-panel-col" id="filterPanelCol">
     <div class="filter-panel-col-head">
       <span class="fp-title">Active Filters</span>
       <div class="filter-panel-col-actions">
-        <button class="btn-sm danger" id="resetBtn" title="Remove all filters" style="display:none">✕ Reset</button>
+        <button class="btn-sm danger" id="resetBtn" style="display:none">✕ Reset</button>
         <button class="btn-sm accent" id="applyBtn">⚡ Apply</button>
       </div>
     </div>
     <div class="filter-panel-col-body" id="filterCards">
       <div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>
     </div>
-    <div class="filter-panel-col-foot">
-      <span class="result-info" id="resultInfo"></span>
-    </div>
+    <div class="filter-panel-col-foot"><span class="result-info" id="resultInfo"></span></div>
     <div class="resize-handle-v" id="rHandleV2"></div>
   </div>
 
-  <!-- Col 3: Map -->
+  <!-- Col 3: map + dist panel -->
   <div class="map-col">
-    <div class="basemap-bar">
+    <div class="top-bar">
+      <!-- Basemap buttons -->
       <button class="basemap-btn active" data-layer="carto-dark">Carto Dark</button>
       <button class="basemap-btn" data-layer="osm">OSM</button>
       <button class="basemap-btn" data-layer="carto-light">Carto Light</button>
+      <button class="basemap-btn" data-layer="wms-sachsen">Sachsen DOP</button>
+      <button class="basemap-btn bm-last" data-layer="none">None</button>
+      <div class="top-bar-sep"></div>
+      <!-- Color picker -->
+      <div class="color-row">
+        <label>Fill</label>
+        <input type="color" class="geo-color" id="geoColor" value="#c8f530">
+        <label>Stroke</label>
+        <input type="color" class="geo-color" id="geoStroke" value="#c8f530">
+      </div>
+      <div class="top-bar-sep"></div>
+      <div class="opacity-row">
+        <label>Opacity</label>
+        <input type="range" class="op-slider" id="fillOpacity" min="0" max="100" value="20">
+        <span class="op-val" id="opVal">20%</span>
+      </div>
     </div>
     <div id="map"></div>
+
+    <!-- Distribution panel -->
+    <div class="dist-panel hidden" id="distPanel">
+      <div class="dist-resize" id="distResize"></div>
+      <div class="dist-panel-head">
+        <span class="dist-panel-title">Distribution</span>
+        <div style="display:flex;gap:4px;align-items:center;margin-left:6px">
+          <button class="btn-sm" id="plotTypeBox" title="Boxplot">Box</button>
+          <button class="btn-sm" id="plotTypeViolin" title="Violin">Violin</button>
+        </div>
+        <button class="btn-sm danger" id="closeDistBtn" style="margin-left:auto">✕</button>
+      </div>
+      <div class="dist-panel-body" id="distBody"></div>
+    </div>
   </div>
 
 </div>
 
 <script>
-/* ── Globals ──────────────────────────────────────── */
+/* ── Globals ──────────────────────────────────────────────── */
 let db = null, SQL = null;
 let map, geojsonLayer = null;
 let currentLayer = null, geomColumn = 'geom', layerSRID = 4326;
 let projTransform = null;
 let columns = [];
-let activeFilters = {};  // colName -> {type, min, max, values:Set, all:[]}
-let activeDropdownColName = null;
-const msTriggerMap = {};  // colName -> {trigger, previewEl}
+let activeFilters = {};    // colName → {type,min,max,values,all}
+let currentFeatures = [];  // last rendered features for distribution
+let distCols = new Set();  // columns selected for distribution
+let plotType = 'box';      // 'box' | 'violin'
+let geoFill = '#c8f530', geoStroke = '#c8f530', geoFillOpacity = 0.2;
 
-/* ── Map ──────────────────────────────────────────── */
+// Multi-select dropdown state
+let activeDropdownColName = null;
+const msTriggerMap = {};   // colName → {trigger, preview}
+
+/* ── Map ────────────────────────────────────────────────────── */
 map = L.map('map', { preferCanvas: true });
 map.setView([20, 0], 2);
 
 const baseLayers = {
-  'carto-dark': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap © CARTO', maxZoom: 20
-  }),
-  'osm': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors', maxZoom: 19
-  }),
-  'carto-light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap © CARTO', maxZoom: 20
-  })
+  'carto-dark':  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',  { attribution:'© OpenStreetMap © CARTO', maxZoom:20 }),
+  'osm':         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',             { attribution:'© OpenStreetMap contributors', maxZoom:19 }),
+  'carto-light': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution:'© OpenStreetMap © CARTO', maxZoom:20 }),
+  'wms-sachsen': L.tileLayer.wms('https://geodienste.sachsen.de/wms_geosn_dop-rgb/guest', { layers:'sn_dop_020', format:'image/png', transparent:false, attribution:'© GeoSN Sachsen', maxZoom:20 }),
+  'none': null
 };
 baseLayers['carto-dark'].addTo(map);
 let currentBasemap = 'carto-dark';
@@ -697,22 +319,32 @@ document.querySelectorAll('.basemap-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const key = btn.dataset.layer;
     if (key === currentBasemap) return;
-    map.removeLayer(baseLayers[currentBasemap]);
-    baseLayers[key].addTo(map);
+    if (baseLayers[currentBasemap]) map.removeLayer(baseLayers[currentBasemap]);
+    if (baseLayers[key]) baseLayers[key].addTo(map);
     if (geojsonLayer) geojsonLayer.bringToFront();
     currentBasemap = key;
     document.querySelectorAll('.basemap-btn').forEach(b => b.classList.toggle('active', b.dataset.layer === key));
   });
 });
 
-/* ── Hover tooltip ────────────────────────────────── */
-const tooltip = document.getElementById('geoTooltip');
+/* ── Color / opacity controls ────────────────────────────── */
+document.getElementById('geoColor').addEventListener('input', e => { geoFill = e.target.value; redrawStyle(); });
+document.getElementById('geoStroke').addEventListener('input', e => { geoStroke = e.target.value; redrawStyle(); });
+document.getElementById('fillOpacity').addEventListener('input', e => {
+  geoFillOpacity = parseInt(e.target.value) / 100;
+  document.getElementById('opVal').textContent = e.target.value + '%';
+  redrawStyle();
+});
+function redrawStyle() {
+  if (!geojsonLayer) return;
+  geojsonLayer.setStyle({ color: geoStroke, fillColor: geoFill, fillOpacity: geoFillOpacity, weight: 1.5, opacity: 0.9 });
+}
 
+/* ── Tooltip ─────────────────────────────────────────────── */
+const tooltip = document.getElementById('geoTooltip');
 function showTooltip(props, x, y) {
-  const rows = Object.entries(props)
-    .map(([k, v]) =>
-      `<tr><td>${escHtml(k)}</td><td>${escHtml(String(v ?? ''))}</td></tr>`
-    ).join('');
+  const rows = Object.entries(props).map(([k,v]) =>
+    `<tr><td>${escHtml(k)}</td><td>${escHtml(String(v??''))}</td></tr>`).join('');
   tooltip.innerHTML = `<table>${rows}</table>`;
   tooltip.style.display = 'block';
   positionTooltip(x, y);
@@ -723,169 +355,122 @@ function positionTooltip(x, y) {
   let left = x + 14, top = y + 14;
   if (left + tw > W - 10) left = x - tw - 10;
   if (top + th > H - 10) top = y - th - 10;
-  tooltip.style.left = left + 'px';
-  tooltip.style.top  = top + 'px';
+  tooltip.style.left = left + 'px'; tooltip.style.top = top + 'px';
 }
 function hideTooltip() { tooltip.style.display = 'none'; }
 
-/* ── SQL.js ───────────────────────────────────────── */
+/* ── SQL.js ──────────────────────────────────────────────── */
 showOverlay('Initializing…');
 initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${f}` })
   .then(s => { SQL = s; hideOverlay(); })
   .catch(e => showOverlay('SQL.js failed: ' + e.message));
 
-/* ── UI helpers ───────────────────────────────────── */
-function showOverlay(msg) {
-  document.getElementById('overlay-msg').textContent = msg || 'Loading…';
-  document.getElementById('overlay').classList.remove('hidden');
-}
+/* ── UI helpers ─────────────────────────────────────────── */
+function showOverlay(msg) { document.getElementById('overlay-msg').textContent = msg||'Loading…'; document.getElementById('overlay').classList.remove('hidden'); }
 function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
-function setStatus(txt, active) {
-  const el = document.getElementById('statusBar');
-  el.textContent = txt; el.className = 'status-bar' + (active ? ' active' : '');
-}
-function setDebug(lines) {
-  const el = document.getElementById('debugInfo');
-  if (!lines || !lines.length) { el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.innerHTML = lines.map(l => escHtml(l)).join('<br>');
-}
+function setStatus(txt, active) { const el=document.getElementById('statusBar'); el.textContent=txt; el.className='status-bar'+(active?' active':''); }
+function setDebug(lines) { const el=document.getElementById('debugInfo'); if(!lines||!lines.length){el.style.display='none';return;} el.style.display='block'; el.innerHTML=lines.map(l=>escHtml(l)).join('<br>'); }
 
-/* ── Resizable handles ────────────────────────────── */
-function makeResizeV(handleId, targetEl, onDone) {
-  const handle = document.getElementById(handleId);
-  let dragging = false, startX, startW;
-  handle.addEventListener('mousedown', e => {
-    dragging = true; startX = e.clientX; startW = targetEl.offsetWidth;
-    handle.classList.add('active'); document.body.style.cursor = 'col-resize';
-    e.preventDefault();
-  });
+/* ── Resize handles ─────────────────────────────────────── */
+function makeResizeV(handleId, targetEl) {
+  const h = document.getElementById(handleId);
+  let dragging=false, startX, startW;
+  h.addEventListener('mousedown', e => { dragging=true; startX=e.clientX; startW=targetEl.offsetWidth; h.classList.add('active'); document.body.style.cursor='col-resize'; e.preventDefault(); });
   document.addEventListener('mousemove', e => {
     if (!dragging) return;
-    const min = parseInt(targetEl.style.minWidth) || 130;
-    const max = parseInt(targetEl.style.maxWidth) || 420;
-    const w = Math.min(max, Math.max(min, startW + (e.clientX - startX)));
-    targetEl.style.width = w + 'px';
-    if (onDone) onDone();
+    const min=parseInt(targetEl.style.minWidth)||120, max=parseInt(targetEl.style.maxWidth)||420;
+    targetEl.style.width = Math.min(max, Math.max(min, startW+(e.clientX-startX)))+'px';
   });
-  document.addEventListener('mouseup', () => {
-    if (!dragging) return;
-    dragging = false; handle.classList.remove('active'); document.body.style.cursor = '';
-    map.invalidateSize();
-  });
+  document.addEventListener('mouseup', () => { if(!dragging)return; dragging=false; h.classList.remove('active'); document.body.style.cursor=''; map.invalidateSize(); });
 }
 makeResizeV('rHandleV1', document.getElementById('sidebar'));
 makeResizeV('rHandleV2', document.getElementById('filterPanelCol'));
 
-/* ── Dropdown ─────────────────────────────────────── */
+// Distribution panel vertical resize
+(function() {
+  const handle = document.getElementById('distResize');
+  const panel  = document.getElementById('distPanel');
+  let dragging=false, startY, startH;
+  handle.addEventListener('mousedown', e => { dragging=true; startY=e.clientY; startH=panel.offsetHeight; document.body.style.cursor='row-resize'; e.preventDefault(); });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const h = Math.min(500, Math.max(80, startH - (e.clientY - startY)));
+    panel.style.height = h+'px';
+    renderDistribution();
+  });
+  document.addEventListener('mouseup', () => { if(!dragging)return; dragging=false; document.body.style.cursor=''; });
+})();
+
+/* ── Distribution panel controls ────────────────────────── */
+let distPanelHeight = 160;
+document.getElementById('closeDistBtn').addEventListener('click', () => {
+  distCols.clear();
+  document.getElementById('distPanel').classList.add('hidden');
+  document.querySelectorAll('.col-item-dist.active').forEach(el => el.classList.remove('active'));
+});
+document.getElementById('plotTypeBox').addEventListener('click', () => { plotType='box'; renderDistribution(); });
+document.getElementById('plotTypeViolin').addEventListener('click', () => { plotType='violin'; renderDistribution(); });
+
+/* ── Dropdown singleton ─────────────────────────────────── */
 const msDropdown = document.getElementById('msDropdown');
 const msSearch   = document.getElementById('msSearch');
 const msList     = document.getElementById('msList');
 const msCount    = document.getElementById('msCount');
 
-document.getElementById('msAll').addEventListener('click', () => {
-  msList.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true);
-  syncDropdown();
-});
-document.getElementById('msNone').addEventListener('click', () => {
-  msList.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
-  syncDropdown();
-});
+document.getElementById('msAll').addEventListener('click', () => { msList.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true); syncDropdown(); });
+document.getElementById('msNone').addEventListener('click', () => { msList.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false); syncDropdown(); });
 msSearch.addEventListener('input', () => {
   const q = msSearch.value.toLowerCase();
-  msList.querySelectorAll('label').forEach(lbl =>
-    lbl.style.display = lbl.textContent.toLowerCase().includes(q) ? '' : 'none'
-  );
+  msList.querySelectorAll('label').forEach(lbl => lbl.style.display = lbl.textContent.toLowerCase().includes(q)?'':'none');
 });
 msList.addEventListener('change', syncDropdown);
 
 function syncDropdown() {
   if (!activeDropdownColName) return;
-  const f = activeFilters[activeDropdownColName];
-  if (!f) return;
-  const sel = new Set();
-  msList.querySelectorAll('input[type=checkbox]:checked').forEach(c => sel.add(c.dataset.val));
-  f.values = sel;
-  updateCardPreview(activeDropdownColName);
+  const f = activeFilters[activeDropdownColName]; if (!f) return;
+  const sel = new Set(); msList.querySelectorAll('input[type=checkbox]:checked').forEach(c => sel.add(c.dataset.val));
+  f.values = sel; updateCardPreview(activeDropdownColName);
 }
-
 function openDropdown(colName, anchorEl) {
   if (activeDropdownColName === colName) { closeDropdown(); return; }
   activeDropdownColName = colName;
-  const f = activeFilters[colName];
-  if (!f || f.type !== 'text') return;
+  const f = activeFilters[colName]; if (!f||f.type!=='text') return;
   msSearch.value = '';
-  msList.innerHTML = f.all.map(v =>
-    `<label><input type="checkbox" data-val="${escAttr(v)}" ${f.values.has(v)?'checked':''}>${escHtml(v)||'<em style="opacity:.4">(empty)</em>'}</label>`
-  ).join('');
-  msCount.textContent = f.all.length + ' values';
-
+  msList.innerHTML = f.all.map(v => `<label><input type="checkbox" data-val="${escAttr(v)}" ${f.values.has(v)?'checked':''}>${escHtml(v)||'<em style="opacity:.4">(empty)</em>'}</label>`).join('');
+  msCount.textContent = f.all.length+' values';
   const rect = anchorEl.getBoundingClientRect();
   const dropW = 240;
   let left = rect.left;
-  if (left + dropW > window.innerWidth - 8) left = window.innerWidth - dropW - 8;
-  msDropdown.style.left  = left + 'px';
-  msDropdown.style.top   = (rect.bottom + 2) + 'px';
-  msDropdown.style.width = dropW + 'px';
+  if (left+dropW > window.innerWidth-8) left = window.innerWidth-dropW-8;
+  msDropdown.style.left = left+'px'; msDropdown.style.top = (rect.bottom+2)+'px'; msDropdown.style.width = dropW+'px';
   msDropdown.classList.add('open');
 }
-function closeDropdown() {
-  msDropdown.classList.remove('open');
-  activeDropdownColName = null;
-}
-document.addEventListener('mousedown', e => {
-  if (!msDropdown.contains(e.target) && !e.target.closest('.ms-trigger')) closeDropdown();
-});
+function closeDropdown() { msDropdown.classList.remove('open'); activeDropdownColName=null; }
+document.addEventListener('mousedown', e => { if(!msDropdown.contains(e.target)&&!e.target.closest('.ms-trigger')) closeDropdown(); });
 
-/* Update trigger label + preview tags */
 function updateCardPreview(colName) {
-  const f = activeFilters[colName];
-  const entry = msTriggerMap[colName];
-  if (!f || !entry) return;
-
-  const total = f.all.length;
-  const sel   = f.values.size;
-  const trigger = entry.trigger;
-  const preview = entry.preview;
-
-  // Trigger label
-  const textEl = trigger.querySelector('.ms-text');
-  if (sel === 0)     textEl.textContent = '(none selected)';
-  else if (sel === total) textEl.textContent = `All (${total})`;
-  else               textEl.textContent = `${sel} / ${total} selected`;
-
-  // Preview tags — show selected values (up to 8, then "+N more")
-  if (preview) {
-    preview.innerHTML = '';
-    if (sel === 0 || sel === total) return;
-    const vals = [...f.values];
-    const show = vals.slice(0, 8);
-    show.forEach(v => {
-      const tag = document.createElement('span');
-      tag.className = 'ms-val-tag';
-      tag.textContent = v || '(empty)';
-      tag.title = v;
-      preview.appendChild(tag);
-    });
-    if (vals.length > 8) {
-      const more = document.createElement('span');
-      more.className = 'ms-val-tag more';
-      more.textContent = `+${vals.length - 8} more`;
-      preview.appendChild(more);
-    }
+  const f = activeFilters[colName]; const entry = msTriggerMap[colName]; if (!f||!entry) return;
+  const total=f.all.length, sel=f.values.size;
+  const textEl = entry.trigger.querySelector('.ms-text');
+  if (sel===0) textEl.textContent='(none selected)';
+  else if (sel===total) textEl.textContent=`All (${total})`;
+  else textEl.textContent=`${sel} / ${total} selected`;
+  if (entry.preview) {
+    entry.preview.innerHTML='';
+    if (sel===0||sel===total) return;
+    const vals=[...f.values]; const show=vals.slice(0,8);
+    show.forEach(v => { const tag=document.createElement('span'); tag.className='ms-val-tag'; tag.textContent=v||'(empty)'; tag.title=v; entry.preview.appendChild(tag); });
+    if (vals.length>8) { const more=document.createElement('span'); more.className='ms-val-tag more'; more.textContent=`+${vals.length-8} more`; entry.preview.appendChild(more); }
   }
 }
 
-/* ── File upload ──────────────────────────────────── */
+/* ── File upload ─────────────────────────────────────────── */
 const uploadZone = document.getElementById('uploadZone');
 const fileInput  = document.getElementById('fileInput');
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault(); uploadZone.classList.remove('drag');
-  const f = e.dataTransfer.files[0]; if (f) loadFile(f);
-});
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+uploadZone.addEventListener('dragover', e=>{e.preventDefault();uploadZone.classList.add('drag');});
+uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e=>{e.preventDefault();uploadZone.classList.remove('drag');const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+fileInput.addEventListener('change', ()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 
 async function loadFile(file) {
   showOverlay('Reading file…');
@@ -896,421 +481,490 @@ async function loadFile(file) {
     const layers = getGeoPackageLayers();
     if (!layers.length) throw new Error('No geometry feature layers found.');
     populateLayerSelect(layers);
-    document.getElementById('noDataMsg').style.display = 'none';
-    document.getElementById('layerSection').style.display = 'block';
-    setStatus(file.name + ' — ' + layers.length + ' layer(s)', true);
+    document.getElementById('noDataMsg').style.display='none';
+    document.getElementById('layerSection').style.display='block';
+    setStatus(file.name+' — '+layers.length+' layer(s)', true);
     await loadLayer(layers[0]);
-  } catch(e) { hideOverlay(); alert('Error: ' + e.message); console.error(e); }
+  } catch(e) { hideOverlay(); alert('Error: '+e.message); console.error(e); }
 }
 
-/* ── Layer discovery ──────────────────────────────── */
+/* ── Layer discovery ──────────────────────────────────────── */
 function getGeoPackageLayers() {
-  try {
-    const r = db.exec(`SELECT table_name FROM gpkg_contents WHERE data_type='features'`);
-    if (r.length && r[0].values.length) return r[0].values.map(v => v[0]);
-  } catch(e) {}
-  try {
-    const r = db.exec(`SELECT DISTINCT table_name FROM gpkg_geometry_columns`);
-    if (r.length && r[0].values.length) return r[0].values.map(v => v[0]);
-  } catch(e) {}
+  try { const r=db.exec(`SELECT table_name FROM gpkg_contents WHERE data_type='features'`); if(r.length&&r[0].values.length) return r[0].values.map(v=>v[0]); } catch(e){}
+  try { const r=db.exec(`SELECT DISTINCT table_name FROM gpkg_geometry_columns`); if(r.length&&r[0].values.length) return r[0].values.map(v=>v[0]); } catch(e){}
   return [];
 }
 function populateLayerSelect(layers) {
-  const sel = document.getElementById('layerSelect');
-  sel.innerHTML = layers.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
-  sel.onchange = () => loadLayer(sel.value);
+  const sel=document.getElementById('layerSelect');
+  sel.innerHTML=layers.map(l=>`<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  sel.onchange=()=>loadLayer(sel.value);
 }
 
-/* ── Load layer ───────────────────────────────────── */
+/* ── Load layer ───────────────────────────────────────────── */
 async function loadLayer(layerName) {
-  currentLayer = layerName;
-  columns = []; activeFilters = {}; projTransform = null;
+  currentLayer=layerName; columns=[]; activeFilters={}; projTransform=null; currentFeatures=[];
+  distCols.clear();
+  document.getElementById('distPanel').classList.add('hidden');
   closeDropdown();
   clearAllFilters(false);
   setDebug([]);
-
   showOverlay('Analyzing layer…');
 
-  geomColumn = 'geom'; layerSRID = 4326;
+  geomColumn='geom'; layerSRID=4326;
   try {
-    const r = db.exec(`SELECT column_name, srs_id FROM gpkg_geometry_columns WHERE table_name='${layerName}'`);
-    if (r.length && r[0].values.length) { geomColumn = r[0].values[0][0]; layerSRID = Number(r[0].values[0][1]); }
-  } catch(e) {}
+    const r=db.exec(`SELECT column_name, srs_id FROM gpkg_geometry_columns WHERE table_name='${layerName}'`);
+    if(r.length&&r[0].values.length){geomColumn=r[0].values[0][0];layerSRID=Number(r[0].values[0][1]);}
+  } catch(e){}
 
-  const dbg = [`Layer: ${layerName}`, `Geom: ${geomColumn}`, `SRID: ${layerSRID}`];
+  const dbg=[`Layer: ${layerName}`,`Geom: ${geomColumn}`,`SRID: ${layerSRID}`];
 
-  if (layerSRID && layerSRID !== 4326 && layerSRID !== 0) {
+  if (layerSRID&&layerSRID!==4326&&layerSRID!==0) {
     try {
-      const r = db.exec(`SELECT definition FROM gpkg_spatial_ref_sys WHERE srs_id=${layerSRID} LIMIT 1`);
-      if (r.length && r[0].values.length) {
-        const def = r[0].values[0][0];
-        if (def && def !== 'undefined' && def.length > 5) {
-          proj4.defs(`EPSG:${layerSRID}`, def);
-          projTransform = proj4(`EPSG:${layerSRID}`, 'EPSG:4326');
-          dbg.push(`Reprojecting EPSG:${layerSRID}→WGS84`);
-        }
-      }
-    } catch(e) { dbg.push('Proj4: ' + e.message); }
+      const r=db.exec(`SELECT definition FROM gpkg_spatial_ref_sys WHERE srs_id=${layerSRID} LIMIT 1`);
+      if(r.length&&r[0].values.length){const def=r[0].values[0][0];if(def&&def!=='undefined'&&def.length>5){proj4.defs(`EPSG:${layerSRID}`,def);projTransform=proj4(`EPSG:${layerSRID}`,'EPSG:4326');dbg.push(`Reprojecting EPSG:${layerSRID}→WGS84`);}}
+    } catch(e){dbg.push('Proj4: '+e.message);}
   }
 
-  const GEOM = new Set([geomColumn.toLowerCase(),'geom','geometry','the_geom','shape','wkb_geometry','ogr_geometry','geom_wgs84']);
+  const GEOM=new Set([geomColumn.toLowerCase(),'geom','geometry','the_geom','shape','wkb_geometry','ogr_geometry','geom_wgs84']);
   try {
-    const info = db.exec(`PRAGMA table_info("${layerName}")`);
-    if (!info.length) throw new Error('No table info');
-    columns = info[0].values
-      .filter(r => !GEOM.has(String(r[1]).toLowerCase()))
-      .map(r => ({ name: r[1], type: inferType(r[2]) }));
+    const info=db.exec(`PRAGMA table_info("${layerName}")`);
+    if(!info.length) throw new Error('No table info');
+    columns=info[0].values.filter(r=>!GEOM.has(String(r[1]).toLowerCase())).map(r=>({name:r[1],type:inferType(r[2])}));
     dbg.push(`${columns.length} columns`);
-  } catch(e) { hideOverlay(); alert('Error: ' + e.message); return; }
+  } catch(e){hideOverlay();alert('Error: '+e.message);return;}
 
   renderColList();
-  document.getElementById('colSection').style.display = 'flex';
+  document.getElementById('colSection').style.display='flex';
   setDebug(dbg);
   await applyFilters();
 }
+function inferType(t){return t&&/INT|REAL|FLOAT|DOUBLE|NUMERIC|DECIMAL|NUMBER/i.test(t)?'number':'text';}
 
-function inferType(t) {
-  return t && /INT|REAL|FLOAT|DOUBLE|NUMERIC|DECIMAL|NUMBER/i.test(t) ? 'number' : 'text';
-}
-
-/* ── Column list ──────────────────────────────────── */
+/* ── Column list ─────────────────────────────────────────── */
 function renderColList() {
-  const list = document.getElementById('colList');
-  list.innerHTML = columns.map(c => `
+  const list=document.getElementById('colList');
+  // Remove old listener by replacing node
+  const newList=list.cloneNode(false);
+  list.parentNode.replaceChild(newList, list);
+
+  newList.innerHTML=columns.map(c=>`
     <div class="col-item" data-col="${escAttr(c.name)}">
       <input type="checkbox" id="cc_${escAttr(c.name)}">
       <span class="col-name" title="${escHtml(c.name)}">${escHtml(c.name)}</span>
       <span class="type-badge ${c.type==='number'?'num':''}">${c.type}</span>
+      ${c.type==='number'?`<span class="col-item-dist" data-distcol="${escAttr(c.name)}" title="Plot distribution">📊</span>`:''}
     </div>
   `).join('');
 
-  list.addEventListener('click', e => {
+  // Single delegated listener
+  newList.addEventListener('click', e => {
+    // Distribution plot button
+    const distBtn = e.target.closest('.col-item-dist');
+    if (distBtn) {
+      e.stopPropagation();
+      const safeId = distBtn.dataset.distcol;
+      const col = columns.find(c => escAttr(c.name)===safeId);
+      if (!col) return;
+      if (distCols.has(col.name)) {
+        distCols.delete(col.name);
+        distBtn.classList.remove('active');
+        if (distCols.size===0) document.getElementById('distPanel').classList.add('hidden');
+        else renderDistribution();
+      } else {
+        distCols.add(col.name);
+        distBtn.classList.add('active');
+        document.getElementById('distPanel').classList.remove('hidden');
+        document.getElementById('distPanel').style.height = '160px';
+        renderDistribution();
+      }
+      return;
+    }
+
+    // Filter checkbox
     const item = e.target.closest('.col-item');
     if (!item) return;
     const safeId = item.dataset.col;
-    const col = columns.find(c => escAttr(c.name) === safeId);
+    const col = columns.find(c => escAttr(c.name)===safeId);
     if (!col) return;
     const chk = item.querySelector('input[type=checkbox]');
-    if (e.target !== chk) chk.checked = !chk.checked;
-    if (chk.checked) addFilterCard(col.name);
-    else removeFilterCard(col.name);
+    if (e.target!==chk) chk.checked=!chk.checked;
+
+    // Guard: prevent double-add if already exists
+    if (chk.checked) {
+      if (!document.getElementById(`fcard_${safeId}`)) addFilterCard(col.name);
+    } else {
+      removeFilterCard(col.name);
+    }
   });
 }
 
-/* ── Filter cards ─────────────────────────────────── */
+/* ── Filter cards ────────────────────────────────────────── */
 function clearAllFilters(keepData) {
-  Object.keys(msTriggerMap).forEach(k => delete msTriggerMap[k]);
-  if (!keepData) activeFilters = {};
-  document.getElementById('filterCards').innerHTML =
-    '<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
-  document.getElementById('resetBtn').style.display = 'none';
-  document.getElementById('resultInfo').textContent = '';
-  document.querySelectorAll('#colList input[type=checkbox]').forEach(c => c.checked = false);
+  Object.keys(msTriggerMap).forEach(k=>delete msTriggerMap[k]);
+  if(!keepData) activeFilters={};
+  document.getElementById('filterCards').innerHTML='<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
+  document.getElementById('resetBtn').style.display='none';
+  document.getElementById('resultInfo').textContent='';
+  document.querySelectorAll('#colList input[type=checkbox]').forEach(c=>c.checked=false);
 }
-
-document.getElementById('resetBtn').addEventListener('click', () => {
-  clearAllFilters(false);
-  applyFilters();
-});
-
-function updateResetBtn() {
-  const hasFCards = document.querySelectorAll('#filterCards .fcard').length > 0;
-  document.getElementById('resetBtn').style.display = hasFCards ? 'inline-block' : 'none';
-}
+document.getElementById('resetBtn').addEventListener('click',()=>{clearAllFilters(false);applyFilters();});
+function updateResetBtn(){document.getElementById('resetBtn').style.display=document.querySelectorAll('#filterCards .fcard').length?'inline-block':'none';}
 
 function addFilterCard(colName) {
-  const col = columns.find(c => c.name === colName);
-  if (!col) return;
+  // Guard: don't add duplicate
+  const safeId=escAttr(colName);
+  if (document.getElementById(`fcard_${safeId}`)) return;
 
-  const placeholder = document.getElementById('noFiltersMsg');
-  if (placeholder) placeholder.remove();
+  const col=columns.find(c=>c.name===colName); if(!col) return;
+  const placeholder=document.getElementById('noFiltersMsg'); if(placeholder) placeholder.remove();
 
-  const safeId = escAttr(colName);
-  const card = document.createElement('div');
-  card.className = 'fcard';
-  card.id = `fcard_${safeId}`;
+  const card=document.createElement('div');
+  card.className='fcard'; card.id=`fcard_${safeId}`;
 
-  if (col.type === 'number') {
-    let mn = '', mx = '';
-    try {
-      const r = db.exec(`SELECT MIN("${colName}"), MAX("${colName}") FROM "${currentLayer}"`);
-      if (r.length) { mn = r[0].values[0][0] ?? ''; mx = r[0].values[0][1] ?? ''; }
-    } catch(e) {}
-
-    card.innerHTML = `
-      <div class="fcard-head">
-        <span class="type-dot num"></span>
-        <span class="fcard-colname num" title="${escHtml(colName)}">${escHtml(colName)}</span>
-        <span class="fcard-remove">×</span>
-      </div>
-      <div class="fcard-body">
-        <div class="range-inputs">
-          <input type="number" id="rmin_${safeId}" placeholder="Min${mn!==''?' '+mn:''}" step="any">
-          <span>–</span>
-          <input type="number" id="rmax_${safeId}" placeholder="Max${mx!==''?' '+mx:''}" step="any">
-        </div>
-      </div>
-    `;
-    activeFilters[colName] = { type: 'number', min: null, max: null };
-    card.querySelector(`#rmin_${safeId}`).addEventListener('input', e => {
-      activeFilters[colName].min = e.target.value !== '' ? parseFloat(e.target.value) : null;
-    });
-    card.querySelector(`#rmax_${safeId}`).addEventListener('input', e => {
-      activeFilters[colName].max = e.target.value !== '' ? parseFloat(e.target.value) : null;
-    });
-
+  if (col.type==='number') {
+    let mn='',mx='';
+    try{const r=db.exec(`SELECT MIN("${colName}"), MAX("${colName}") FROM "${currentLayer}"`);if(r.length){mn=r[0].values[0][0]??'';mx=r[0].values[0][1]??'';}}catch(e){}
+    card.innerHTML=`
+      <div class="fcard-head"><span class="type-dot num"></span><span class="fcard-colname num" title="${escHtml(colName)}">${escHtml(colName)}</span><span class="fcard-remove">×</span></div>
+      <div class="fcard-body"><div class="range-inputs">
+        <input type="number" id="rmin_${safeId}" placeholder="Min${mn!==''?' '+mn:''}" step="any">
+        <span>–</span>
+        <input type="number" id="rmax_${safeId}" placeholder="Max${mx!==''?' '+mx:''}" step="any">
+      </div></div>`;
+    activeFilters[colName]={type:'number',min:null,max:null};
+    card.querySelector(`#rmin_${safeId}`).addEventListener('input',e=>{activeFilters[colName].min=e.target.value!==''?parseFloat(e.target.value):null;});
+    card.querySelector(`#rmax_${safeId}`).addEventListener('input',e=>{activeFilters[colName].max=e.target.value!==''?parseFloat(e.target.value):null;});
   } else {
-    let values = [];
-    try {
-      const r = db.exec(`SELECT DISTINCT "${colName}" FROM "${currentLayer}" WHERE "${colName}" IS NOT NULL ORDER BY "${colName}" LIMIT 2000`);
-      if (r.length) values = r[0].values.map(v => v[0] === null ? '' : String(v[0]));
-    } catch(e) {}
-
-    activeFilters[colName] = { type: 'text', values: new Set(values), all: values };
-
-    card.innerHTML = `
-      <div class="fcard-head">
-        <span class="type-dot"></span>
-        <span class="fcard-colname" title="${escHtml(colName)}">${escHtml(colName)}</span>
-        <span class="fcard-remove">×</span>
-      </div>
+    let values=[];
+    try{const r=db.exec(`SELECT DISTINCT "${colName}" FROM "${currentLayer}" WHERE "${colName}" IS NOT NULL ORDER BY "${colName}" LIMIT 2000`);if(r.length)values=r[0].values.map(v=>v[0]===null?'':String(v[0]));}catch(e){}
+    activeFilters[colName]={type:'text',values:new Set(values),all:values};
+    card.innerHTML=`
+      <div class="fcard-head"><span class="type-dot"></span><span class="fcard-colname" title="${escHtml(colName)}">${escHtml(colName)}</span><span class="fcard-remove">×</span></div>
       <div class="fcard-body">
-        <div class="ms-trigger" id="mst_${safeId}">
-          <span class="ms-text">All (${values.length})</span>
-          <svg width="7" height="7" viewBox="0 0 8 8"><path fill="#546070" d="M4 6L0 2h8z"/></svg>
-        </div>
+        <div class="ms-trigger" id="mst_${safeId}"><span class="ms-text">All (${values.length})</span><svg width="7" height="7" viewBox="0 0 8 8"><path fill="#546070" d="M4 6L0 2h8z"/></svg></div>
         <div class="ms-selected-preview" id="msprev_${safeId}"></div>
-      </div>
-    `;
-
-    const trigger = card.querySelector(`#mst_${safeId}`);
-    const preview = card.querySelector(`#msprev_${safeId}`);
-    msTriggerMap[colName] = { trigger, preview };
-
-    trigger.addEventListener('click', e => {
-      e.stopPropagation();
-      openDropdown(colName, trigger);
-    });
+      </div>`;
+    const trigger=card.querySelector(`#mst_${safeId}`);
+    const preview=card.querySelector(`#msprev_${safeId}`);
+    msTriggerMap[colName]={trigger,preview};
+    trigger.addEventListener('click',e=>{e.stopPropagation();openDropdown(colName,trigger);});
   }
 
-  card.querySelector('.fcard-remove').addEventListener('click', () => {
+  card.querySelector('.fcard-remove').addEventListener('click',()=>{
     removeFilterCard(colName);
-    const chk = document.getElementById(`cc_${safeId}`);
-    if (chk) chk.checked = false;
+    const chk=document.getElementById(`cc_${safeId}`);
+    if(chk) chk.checked=false;
   });
-
   document.getElementById('filterCards').appendChild(card);
   updateResetBtn();
 }
 
 function removeFilterCard(colName) {
-  const safeId = escAttr(colName);
-  const card = document.getElementById(`fcard_${safeId}`);
-  if (card) card.remove();
-  delete activeFilters[colName];
-  delete msTriggerMap[colName];
-  if (activeDropdownColName === colName) closeDropdown();
-
-  if (!document.querySelector('#filterCards .fcard')) {
-    document.getElementById('filterCards').innerHTML =
-      '<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
-  }
+  const safeId=escAttr(colName);
+  const card=document.getElementById(`fcard_${safeId}`); if(card) card.remove();
+  delete activeFilters[colName]; delete msTriggerMap[colName];
+  if(activeDropdownColName===colName) closeDropdown();
+  if(!document.querySelector('#filterCards .fcard'))
+    document.getElementById('filterCards').innerHTML='<div class="no-filters-msg" id="noFiltersMsg">Check columns on<br>the left to filter.</div>';
   updateResetBtn();
 }
 
-/* ── Apply filters ────────────────────────────────── */
-document.getElementById('applyBtn').addEventListener('click', applyFilters);
-
-async function applyFilters() {
-  showOverlay('Querying…');
-  await delay(30);
-  try { _applyFilters(); }
-  catch(e) { hideOverlay(); alert('Query error: ' + e.message); console.error(e); }
-}
+/* ── Apply filters ───────────────────────────────────────── */
+document.getElementById('applyBtn').addEventListener('click',applyFilters);
+async function applyFilters(){showOverlay('Querying…');await delay(30);try{_applyFilters();}catch(e){hideOverlay();alert('Query error: '+e.message);console.error(e);}}
 
 function _applyFilters() {
-  const clauses = [];
-  for (const [col, f] of Object.entries(activeFilters)) {
-    if (f.type === 'number') {
-      if (f.min !== null) clauses.push(`"${col}" >= ${f.min}`);
-      if (f.max !== null) clauses.push(`"${col}" <= ${f.max}`);
+  const clauses=[];
+  for(const [col,f] of Object.entries(activeFilters)){
+    if(f.type==='number'){
+      if(f.min!==null) clauses.push(`"${col}" >= ${f.min}`);
+      if(f.max!==null) clauses.push(`"${col}" <= ${f.max}`);
     } else {
-      if (f.values.size === 0) { clauses.push('1=0'); continue; }
-      if (f.values.size < f.all.length) {
-        const inList = [...f.values].map(v => `'${v.replace(/'/g,"''")}'`).join(',');
-        clauses.push(`"${col}" IN (${inList})`);
-      }
+      if(f.values.size===0){clauses.push('1=0');continue;}
+      if(f.values.size<f.all.length){const inList=[...f.values].map(v=>`'${v.replace(/'/g,"''")}'`).join(',');clauses.push(`"${col}" IN (${inList})`);}
     }
   }
-  const where = clauses.length ? 'WHERE ' + clauses.join(' AND ') : '';
+  const where=clauses.length?'WHERE '+clauses.join(' AND '):'';
+  const sql=`SELECT "${geomColumn}" AS _gpkg_geom_, * FROM "${currentLayer}" ${where}`;
+  let res; try{res=db.exec(sql);}catch(e){throw new Error(e.message+'\n'+sql);}
 
-  // No LIMIT — fetch all matching features
-  const sql = `SELECT "${geomColumn}" AS _gpkg_geom_, * FROM "${currentLayer}" ${where}`;
+  if(!res.length||!res[0].values.length){clearMap();hideOverlay();document.getElementById('resultInfo').innerHTML='<strong>0</strong> features';currentFeatures=[];return;}
 
-  let res;
-  try { res = db.exec(sql); }
-  catch(e) { throw new Error(e.message + '\n' + sql); }
+  const cols=res[0].columns; const geomIdx=cols.indexOf('_gpkg_geom_');
+  let failed=0; const features=[];
 
-  if (!res.length || !res[0].values.length) {
-    clearMap(); hideOverlay();
-    document.getElementById('resultInfo').innerHTML = '<strong>0</strong> features';
-    return;
+  for(const row of res[0].values){
+    const blob=row[geomIdx]; if(!blob){failed++;continue;}
+    let geom; try{geom=parseGpkgGeom(blob);}catch(e){failed++;continue;}
+    if(!geom){failed++;continue;}
+    if(projTransform) try{reprojectGeom(geom);}catch(e){}
+    const props={};
+    for(let i=0;i<cols.length;i++){if(i===geomIdx)continue;const v=row[i];if(v instanceof Uint8Array||(v&&v.buffer instanceof ArrayBuffer))continue;props[cols[i]]=v;}
+    features.push({type:'Feature',geometry:geom,properties:props});
   }
 
-  const cols = res[0].columns;
-  const geomIdx = cols.indexOf('_gpkg_geom_');
-  let failed = 0;
-  const features = [];
-
-  for (const row of res[0].values) {
-    const blob = row[geomIdx];
-    if (!blob) { failed++; continue; }
-    let geom;
-    try { geom = parseGpkgGeom(blob); } catch(e) { failed++; continue; }
-    if (!geom) { failed++; continue; }
-    if (projTransform) try { reprojectGeom(geom); } catch(e) {}
-
-    const props = {};
-    for (let i = 0; i < cols.length; i++) {
-      if (i === geomIdx) continue;
-      const v = row[i];
-      if (v instanceof Uint8Array || (v && v.buffer instanceof ArrayBuffer)) continue;
-      props[cols[i]] = v;
-    }
-    features.push({ type: 'Feature', geometry: geom, properties: props });
-  }
-
-  renderGeoJSON({ type: 'FeatureCollection', features });
-  document.getElementById('resultInfo').innerHTML =
-    `<strong>${features.length}</strong> features${failed ? ` (${failed} skipped)` : ''}`;
+  currentFeatures=features;
+  renderGeoJSON({type:'FeatureCollection',features});
+  document.getElementById('resultInfo').innerHTML=`<strong>${features.length}</strong> features${failed?` (${failed} skipped)`:''}`;
   hideOverlay();
+  if(distCols.size>0) renderDistribution();
 }
 
-/* ── Reproject ────────────────────────────────────── */
-function reprojectGeom(geom) {
-  function reproj(c) {
-    if (!c || !c.length) return;
-    if (typeof c[0] === 'number') {
-      const [lng, lat] = projTransform.forward([c[0], c[1]]);
-      c[0] = lng; c[1] = lat;
-    } else c.forEach(reproj);
-  }
-  if (geom.coordinates) reproj(geom.coordinates);
-  if (geom.geometries) geom.geometries.forEach(g => reprojectGeom(g));
+/* ── Reproject ────────────────────────────────────────────── */
+function reprojectGeom(geom){
+  function reproj(c){if(!c||!c.length)return;if(typeof c[0]==='number'){const[lng,lat]=projTransform.forward([c[0],c[1]]);c[0]=lng;c[1]=lat;}else c.forEach(reproj);}
+  if(geom.coordinates)reproj(geom.coordinates);
+  if(geom.geometries)geom.geometries.forEach(g=>reprojectGeom(g));
 }
 
-/* ── WKB parser ───────────────────────────────────── */
-function parseGpkgGeom(input) {
+/* ── WKB parser ───────────────────────────────────────────── */
+function parseGpkgGeom(input){
   let bytes;
-  if (input instanceof Uint8Array) bytes = input;
-  else if (Array.isArray(input)) bytes = new Uint8Array(input);
-  else if (ArrayBuffer.isView(input)) bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
-  else if (input instanceof ArrayBuffer) bytes = new Uint8Array(input);
+  if(input instanceof Uint8Array)bytes=input;
+  else if(Array.isArray(input))bytes=new Uint8Array(input);
+  else if(ArrayBuffer.isView(input))bytes=new Uint8Array(input.buffer,input.byteOffset,input.byteLength);
+  else if(input instanceof ArrayBuffer)bytes=new Uint8Array(input);
   else return null;
-
-  if (bytes.length < 8 || bytes[0] !== 0x47 || bytes[1] !== 0x50) return null;
-  const flags = bytes[3];
-  if ((flags >> 4) & 0x01) return null;
-  const envN = (flags >> 1) & 0x07;
-  const envCount = [0, 4, 6, 6, 8][envN] || 0;
-  const wkbStart = 8 + envCount * 8;
-  if (wkbStart >= bytes.length) return null;
-
-  const wkbBuf = bytes.buffer.slice(bytes.byteOffset + wkbStart, bytes.byteOffset + bytes.length);
-  const r = readWKB(new DataView(wkbBuf), 0);
-  return r ? r.geom : null;
+  if(bytes.length<8||bytes[0]!==0x47||bytes[1]!==0x50)return null;
+  const flags=bytes[3]; if((flags>>4)&0x01)return null;
+  const envN=(flags>>1)&0x07; const envCount=[0,4,6,6,8][envN]||0;
+  const wkbStart=8+envCount*8; if(wkbStart>=bytes.length)return null;
+  const wkbBuf=bytes.buffer.slice(bytes.byteOffset+wkbStart,bytes.byteOffset+bytes.length);
+  const r=readWKB(new DataView(wkbBuf),0); return r?r.geom:null;
 }
-
-function readWKB(view, off) {
-  if (off + 5 > view.byteLength) return null;
-  const le = view.getUint8(off) === 1; off++;
-  const rawType = view.getUint32(off, le); off += 4;
-
-  const baseType = rawType % 1000 || (rawType & 0xFFFF);
-  const dimOffset = Math.floor(rawType / 1000);
-  const hasZ = !!(rawType & 0x80000000) || dimOffset === 1 || dimOffset === 3;
-  const hasM = !!(rawType & 0x40000000) || dimOffset === 2 || dimOffset === 3;
-  const extra = (hasZ ? 1 : 0) + (hasM ? 1 : 0);
-
-  function readCoords(n) {
-    const arr = [];
-    for (let i = 0; i < n; i++) {
-      const x = view.getFloat64(off, le); off += 8;
-      const y = view.getFloat64(off, le); off += 8;
-      off += extra * 8;
-      arr.push([x, y]);
-    }
-    return arr;
-  }
-
-  switch (baseType) {
-    case 1: { const x=view.getFloat64(off,le);off+=8; const y=view.getFloat64(off,le);off+=8; off+=extra*8; return {geom:{type:'Point',coordinates:[x,y]},off}; }
-    case 2: { const n=view.getUint32(off,le);off+=4; return {geom:{type:'LineString',coordinates:readCoords(n)},off}; }
-    case 3: {
-      const nr=view.getUint32(off,le);off+=4; const rings=[];
-      for(let r=0;r<nr;r++){const n=view.getUint32(off,le);off+=4;rings.push(readCoords(n));}
-      return {geom:{type:'Polygon',coordinates:rings},off};
-    }
-    case 4: { const n=view.getUint32(off,le);off+=4; const pts=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;pts.push(r.geom.coordinates);} return {geom:{type:'MultiPoint',coordinates:pts},off}; }
-    case 5: { const n=view.getUint32(off,le);off+=4; const ls=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ls.push(r.geom.coordinates);} return {geom:{type:'MultiLineString',coordinates:ls},off}; }
-    case 6: { const n=view.getUint32(off,le);off+=4; const ps=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ps.push(r.geom.coordinates);} return {geom:{type:'MultiPolygon',coordinates:ps},off}; }
-    case 7: { const n=view.getUint32(off,le);off+=4; const gs=[]; for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;gs.push(r.geom);} return {geom:{type:'GeometryCollection',geometries:gs},off}; }
-    default: console.warn('Unknown WKB type:',baseType); return null;
+function readWKB(view,off){
+  if(off+5>view.byteLength)return null;
+  const le=view.getUint8(off)===1;off++;
+  const rawType=view.getUint32(off,le);off+=4;
+  const baseType=rawType%1000||(rawType&0xFFFF);
+  const dimOffset=Math.floor(rawType/1000);
+  const hasZ=!!(rawType&0x80000000)||dimOffset===1||dimOffset===3;
+  const hasM=!!(rawType&0x40000000)||dimOffset===2||dimOffset===3;
+  const extra=(hasZ?1:0)+(hasM?1:0);
+  function readCoords(n){const a=[];for(let i=0;i<n;i++){const x=view.getFloat64(off,le);off+=8;const y=view.getFloat64(off,le);off+=8;off+=extra*8;a.push([x,y]);}return a;}
+  switch(baseType){
+    case 1:{const x=view.getFloat64(off,le);off+=8;const y=view.getFloat64(off,le);off+=8;off+=extra*8;return{geom:{type:'Point',coordinates:[x,y]},off};}
+    case 2:{const n=view.getUint32(off,le);off+=4;return{geom:{type:'LineString',coordinates:readCoords(n)},off};}
+    case 3:{const nr=view.getUint32(off,le);off+=4;const rings=[];for(let r=0;r<nr;r++){const n=view.getUint32(off,le);off+=4;rings.push(readCoords(n));}return{geom:{type:'Polygon',coordinates:rings},off};}
+    case 4:{const n=view.getUint32(off,le);off+=4;const pts=[];for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;pts.push(r.geom.coordinates);}return{geom:{type:'MultiPoint',coordinates:pts},off};}
+    case 5:{const n=view.getUint32(off,le);off+=4;const ls=[];for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ls.push(r.geom.coordinates);}return{geom:{type:'MultiLineString',coordinates:ls},off};}
+    case 6:{const n=view.getUint32(off,le);off+=4;const ps=[];for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;ps.push(r.geom.coordinates);}return{geom:{type:'MultiPolygon',coordinates:ps},off};}
+    case 7:{const n=view.getUint32(off,le);off+=4;const gs=[];for(let i=0;i<n;i++){const r=readWKB(view,off);if(!r)break;off=r.off;gs.push(r.geom);}return{geom:{type:'GeometryCollection',geometries:gs},off};}
+    default:return null;
   }
 }
 
-/* ── Map rendering ────────────────────────────────── */
-function clearMap() {
-  if (geojsonLayer) { map.removeLayer(geojsonLayer); geojsonLayer = null; }
-}
+/* ── Map rendering ────────────────────────────────────────── */
+function clearMap(){if(geojsonLayer){map.removeLayer(geojsonLayer);geojsonLayer=null;}}
 
-function renderGeoJSON(fc) {
+function renderGeoJSON(fc){
   clearMap();
-  geojsonLayer = L.geoJSON(fc, {
-    style: { color: '#c8f530', weight: 1.5, opacity: 0.9, fillColor: '#c8f530', fillOpacity: 0.18 },
-    pointToLayer: (f, latlng) => L.circleMarker(latlng, {
-      radius: 4, color: '#30f5c8', weight: 1.5, fillColor: '#30f5c8', fillOpacity: 0.6
-    }),
-    onEachFeature: (f, layer) => {
-      const props = f.properties || {};
-
-      // Hover events → custom wide tooltip
-      layer.on('mouseover', e => {
-        showTooltip(props, e.originalEvent.clientX, e.originalEvent.clientY);
-        layer.setStyle && layer.setStyle({ color: '#fff', weight: 2, fillOpacity: 0.4 });
-      });
-      layer.on('mousemove', e => positionTooltip(e.originalEvent.clientX, e.originalEvent.clientY));
-      layer.on('mouseout', () => {
-        hideTooltip();
-        geojsonLayer.resetStyle(layer);
-      });
-
-      // Click → popup (also wide)
-      const rows = Object.entries(props)
-        .map(([k,v]) =>
-          `<tr><td style="color:#546070;padding-right:8px;white-space:nowrap;vertical-align:top;max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(k)}</td>` +
-          `<td style="word-break:break-word;max-width:260px">${escHtml(String(v??''))}</td></tr>`
-        ).join('');
-      layer.bindPopup(
-        `<div style="font-family:'JetBrains Mono',monospace;font-size:10px;min-width:300px;max-width:480px">` +
-        `<table style="border-collapse:collapse;width:100%">${rows}</table></div>`,
-        { maxHeight: 320, maxWidth: 520 }
-      );
+  geojsonLayer=L.geoJSON(fc,{
+    style:{color:geoStroke,weight:1.5,opacity:.9,fillColor:geoFill,fillOpacity:geoFillOpacity},
+    pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:4,color:geoStroke,weight:1.5,fillColor:geoFill,fillOpacity:Math.min(1,geoFillOpacity*3)}),
+    onEachFeature:(f,layer)=>{
+      const props=f.properties||{};
+      layer.on('mouseover',e=>{showTooltip(props,e.originalEvent.clientX,e.originalEvent.clientY);if(layer.setStyle)layer.setStyle({color:'#fff',weight:2,fillOpacity:Math.min(1,geoFillOpacity+.2)});});
+      layer.on('mousemove',e=>positionTooltip(e.originalEvent.clientX,e.originalEvent.clientY));
+      layer.on('mouseout',()=>{hideTooltip();geojsonLayer.resetStyle(layer);});
+      const rows=Object.entries(props).map(([k,v])=>`<tr><td style="color:#546070;padding-right:8px;white-space:nowrap;vertical-align:top;max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(k)}</td><td style="word-break:break-word;max-width:260px">${escHtml(String(v??''))}</td></tr>`).join('');
+      layer.bindPopup(`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;min-width:300px;max-width:480px"><table style="border-collapse:collapse;width:100%">${rows}</table></div>`,{maxHeight:320,maxWidth:520});
     }
   }).addTo(map);
-
-  try {
-    const b = geojsonLayer.getBounds();
-    if (b.isValid()) map.fitBounds(b, { padding: [24, 24], maxZoom: 18 });
-  } catch(e) {}
+  try{const b=geojsonLayer.getBounds();if(b.isValid())map.fitBounds(b,{padding:[24,24],maxZoom:18});}catch(e){}
 }
 
-/* ── Utilities ────────────────────────────────────── */
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* ══════════════════════════════════════════════════════════════
+   DISTRIBUTION PLOTS — pure Canvas, no external lib
+   ══════════════════════════════════════════════════════════════ */
+function getNumericValues(colName) {
+  return currentFeatures
+    .map(f => f.properties[colName])
+    .filter(v => v !== null && v !== undefined && !isNaN(Number(v)))
+    .map(Number)
+    .sort((a,b) => a-b);
 }
-function escAttr(s) { return String(s).replace(/[^a-zA-Z0-9_]/g,'_'); }
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function computeBoxStats(sorted) {
+  const n = sorted.length;
+  if (!n) return null;
+  const q1 = percentile(sorted, 25);
+  const q2 = percentile(sorted, 50);
+  const q3 = percentile(sorted, 75);
+  const iqr = q3-q1;
+  const whiskerLo = Math.max(sorted[0], q1-1.5*iqr);
+  const whiskerHi = Math.min(sorted[n-1], q3+1.5*iqr);
+  const outliers = sorted.filter(v => v < whiskerLo || v > whiskerHi);
+  return { min:sorted[0], max:sorted[n-1], q1, q2, q3, whiskerLo, whiskerHi, outliers, n };
+}
+
+function percentile(sorted, p) {
+  const idx = (p/100)*(sorted.length-1);
+  const lo  = Math.floor(idx), hi = Math.ceil(idx);
+  return sorted[lo]+(sorted[hi]-sorted[lo])*(idx-lo);
+}
+
+function kernelDensity(sorted, bandwidth, pts) {
+  // Silverman's rule if bandwidth not given
+  const n = sorted.length;
+  const std = Math.sqrt(sorted.reduce((s,v)=>{const m=sorted[Math.floor(n/2)];return s+(v-m)**2;},0)/n);
+  const bw = bandwidth || 1.06*std*Math.pow(n,-0.2) || 1;
+  return pts.map(x => {
+    const sum = sorted.reduce((s,v) => s + Math.exp(-0.5*((x-v)/bw)**2), 0);
+    return sum / (n*bw*Math.sqrt(2*Math.PI));
+  });
+}
+
+function renderDistribution() {
+  const body = document.getElementById('distBody');
+  body.innerHTML = '';
+  if (!currentFeatures.length || !distCols.size) return;
+
+  const panelH = document.getElementById('distPanel').offsetHeight - 36; // subtract header
+  const plotW  = 140;
+
+  distCols.forEach(colName => {
+    const sorted = getNumericValues(colName);
+    if (!sorted.length) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'plot-wrap';
+    wrap.style.width  = plotW+'px';
+    wrap.style.height = panelH+'px';
+
+    const canvas = document.createElement('canvas');
+    const dpr = window.devicePixelRatio||1;
+    canvas.width  = plotW*dpr;
+    canvas.height = panelH*dpr;
+    canvas.style.width  = plotW+'px';
+    canvas.style.height = panelH+'px';
+    wrap.appendChild(canvas);
+
+    const label = document.createElement('div');
+    label.className = 'plot-label';
+    label.textContent = colName;
+    wrap.appendChild(label);
+
+    body.appendChild(wrap);
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    const pad = { top:14, bottom:28, left:8, right:8 };
+    const cw = plotW, ch = panelH;
+    const innerH = ch-pad.top-pad.bottom;
+    const innerW = cw-pad.left-pad.right;
+
+    // clear
+    ctx.clearRect(0,0,cw,ch);
+
+    const stats = computeBoxStats(sorted);
+    if (!stats) return;
+
+    // y scale: map data range to pixel range (top=max, bottom=min)
+    const dataMin = stats.min, dataMax = stats.max;
+    const dataRange = dataMax-dataMin || 1;
+    function toY(v) { return pad.top + innerH*(1-(v-dataMin)/dataRange); }
+
+    // axis ticks
+    ctx.strokeStyle='#2b3140'; ctx.lineWidth=1;
+    const tickCount = 4;
+    ctx.font='8px JetBrains Mono,monospace'; ctx.fillStyle='#546070'; ctx.textAlign='right';
+    for(let i=0;i<=tickCount;i++){
+      const v=dataMin+(dataRange*i/tickCount);
+      const y=toY(v);
+      ctx.beginPath();ctx.moveTo(pad.left+2,y);ctx.lineTo(cw-pad.right,y);ctx.stroke();
+      // format number
+      const label=Math.abs(v)>=10000?v.toExponential(1):v.toFixed(Math.abs(v)<1?3:1);
+      ctx.fillText(label, pad.left+2, y-1);
+    }
+
+    if (plotType==='box') {
+      drawBoxplot(ctx, stats, toY, pad, innerW, cw);
+    } else {
+      drawViolin(ctx, stats, sorted, toY, pad, innerW, cw, dataMin, dataMax, innerH);
+    }
+
+    // n label
+    ctx.fillStyle='#546070'; ctx.textAlign='center'; ctx.font='7px JetBrains Mono,monospace';
+    ctx.fillText(`n=${stats.n}`, cw/2, pad.top+8);
+  });
+}
+
+function drawBoxplot(ctx, stats, toY, pad, innerW, cw) {
+  const cx = cw/2;
+  const bw = Math.max(10, innerW*0.35); // box half-width
+
+  // Whisker lines
+  ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5; ctx.setLineDash([2,2]);
+  ctx.beginPath(); ctx.moveTo(cx, toY(stats.whiskerHi)); ctx.lineTo(cx, toY(stats.q3)); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, toY(stats.q1)); ctx.lineTo(cx, toY(stats.whiskerLo)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Whisker caps
+  ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5;
+  [[stats.whiskerHi],[stats.whiskerLo]].forEach(([v])=>{
+    const y=toY(v);
+    ctx.beginPath();ctx.moveTo(cx-bw*0.4,y);ctx.lineTo(cx+bw*0.4,y);ctx.stroke();
+  });
+
+  // IQR box
+  const yQ1=toY(stats.q1), yQ3=toY(stats.q3);
+  ctx.fillStyle='rgba(48,245,200,0.15)';
+  ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5;
+  ctx.fillRect(cx-bw,yQ3,bw*2,yQ1-yQ3);
+  ctx.strokeRect(cx-bw,yQ3,bw*2,yQ1-yQ3);
+
+  // Median
+  const yMed=toY(stats.q2);
+  ctx.strokeStyle='#c8f530'; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-bw,yMed);ctx.lineTo(cx+bw,yMed);ctx.stroke();
+
+  // Outliers
+  ctx.fillStyle='rgba(200,245,48,0.5)';
+  stats.outliers.forEach(v=>{
+    const y=toY(v);
+    ctx.beginPath();ctx.arc(cx,y,2,0,Math.PI*2);ctx.fill();
+  });
+}
+
+function drawViolin(ctx, stats, sorted, toY, pad, innerW, cw, dataMin, dataMax, innerH) {
+  const cx = cw/2;
+  const pts = 60;
+  const ys  = Array.from({length:pts},(_,i)=>dataMin+(dataMax-dataMin)*i/(pts-1));
+  const density = kernelDensity(sorted, null, ys);
+  const maxD = Math.max(...density)||1;
+  const vw = innerW*0.45;
+
+  // Violin shape
+  ctx.beginPath();
+  ctx.moveTo(cx, toY(ys[0]));
+  ys.forEach((v,i)=>{
+    const x=cx+(density[i]/maxD)*vw;
+    ctx.lineTo(x, toY(v));
+  });
+  for(let i=pts-1;i>=0;i--){
+    const x=cx-(density[i]/maxD)*vw;
+    ctx.lineTo(x, toY(ys[i]));
+  }
+  ctx.closePath();
+  ctx.fillStyle='rgba(48,245,200,0.15)'; ctx.fill();
+  ctx.strokeStyle='rgba(48,245,200,0.6)'; ctx.lineWidth=1; ctx.stroke();
+
+  // Median line
+  const yMed=toY(stats.q2);
+  ctx.strokeStyle='#c8f530'; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-6,yMed);ctx.lineTo(cx+6,yMed);ctx.stroke();
+
+  // IQR bar
+  ctx.strokeStyle='rgba(200,245,48,0.6)'; ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx,toY(stats.q1));ctx.lineTo(cx,toY(stats.q3));ctx.stroke();
+}
+
+/* ── Utilities ────────────────────────────────────────────── */
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return String(s).replace(/[^a-zA-Z0-9_]/g,'_');}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 </script>
 </body>
 </html>
