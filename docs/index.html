@@ -172,7 +172,8 @@ input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer
 .dist-panel-body::-webkit-scrollbar-thumb{background:var(--border2)}
 .dist-resize{height:5px;cursor:row-resize;background:transparent;flex-shrink:0}
 .dist-resize:hover{background:var(--accent);opacity:.4}
-.plot-wrap{flex-shrink:0;border-right:1px solid var(--border);position:relative}
+.plot-wrap{flex-shrink:0;border-right:1px solid var(--border);position:relative;margin-right:8px}
+.plot-wrap:last-child{margin-right:0}
 .plot-wrap canvas{display:block}
 .plot-label{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:.58rem;color:var(--muted);pointer-events:none}
 
@@ -280,12 +281,14 @@ html[data-theme="light"] .theme-btn.active{color:#fff;background:var(--accent2);
 html[data-theme="light"] .leaflet-container { background: #e8ecf4; }
 html[data-theme="light"] .leaflet-bar a { background: var(--panel); color: var(--text); border-color: var(--border); }
 html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"] .leaflet-popup-tip { background: var(--panel); color: var(--text); }
+/* Disclaimer badge */
+.disclaimer{position:fixed;bottom:6px;right:8px;z-index:2000;font-family:'JetBrains Mono',monospace;font-size:.53rem;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:2px 7px;opacity:.65;pointer-events:none;line-height:1.5;text-align:right}
 </style>
-</head>
 <body>
 
 <div class="overlay" id="overlay"><div class="spinner"><div class="spinner-ring"></div><div id="overlay-msg">Loading…</div></div></div>
 <div class="geo-tooltip" id="geoTooltip"></div>
+<div class="disclaimer">Built with AI assistance. <br>Verify outputs independently.</div>
 
 <!-- Singleton dropdown -->
 <div class="ms-dropdown" id="msDropdown">
@@ -1015,8 +1018,8 @@ function renderDistribution() {
   body.innerHTML = '';
   if (!currentFeatures.length || !distCols.size) return;
 
-  const panelH = document.getElementById('distPanel').offsetHeight - 36; // subtract header
-  const plotW  = 140;
+  const panelH = document.getElementById('distPanel').offsetHeight - 36;
+  const plotW  = 172;  // wider for y-axis labels
 
   distCols.forEach(colName => {
     const sorted = getNumericValues(colName);
@@ -1035,60 +1038,83 @@ function renderDistribution() {
     canvas.style.height = panelH+'px';
     wrap.appendChild(canvas);
 
-    const label = document.createElement('div');
-    label.className = 'plot-label';
-    label.textContent = colName;
-    wrap.appendChild(label);
+    const lbl = document.createElement('div');
+    lbl.className = 'plot-label';
+    lbl.textContent = colName;
+    wrap.appendChild(lbl);
 
     body.appendChild(wrap);
 
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr,dpr);
 
-    const pad = { top:14, bottom:28, left:8, right:8 };
+    // Left padding wide enough for axis labels; right padding for breathing room
+    const pad = { top:16, bottom:28, left:48, right:10 };
     const cw = plotW, ch = panelH;
-    const innerH = ch-pad.top-pad.bottom;
-    const innerW = cw-pad.left-pad.right;
+    const innerH = ch - pad.top - pad.bottom;
+    const innerW = cw - pad.left - pad.right;
 
-    // clear
-    ctx.clearRect(0,0,cw,ch);
+    ctx.clearRect(0, 0, cw, ch);
 
     const stats = computeBoxStats(sorted);
     if (!stats) return;
 
-    // y scale: map data range to pixel range (top=max, bottom=min)
     const dataMin = stats.min, dataMax = stats.max;
-    const dataRange = dataMax-dataMin || 1;
-    function toY(v) { return pad.top + innerH*(1-(v-dataMin)/dataRange); }
+    const dataRange = dataMax - dataMin || 1;
+    function toY(v) { return pad.top + innerH * (1 - (v - dataMin) / dataRange); }
 
-    // axis ticks
-    ctx.strokeStyle='#2b3140'; ctx.lineWidth=1;
-    const tickCount = 4;
-    ctx.font='8px JetBrains Mono,monospace'; ctx.fillStyle='#546070'; ctx.textAlign='right';
-    for(let i=0;i<=tickCount;i++){
-      const v=dataMin+(dataRange*i/tickCount);
-      const y=toY(v);
-      ctx.beginPath();ctx.moveTo(pad.left+2,y);ctx.lineTo(cw-pad.right,y);ctx.stroke();
-      // format number
-      const label=Math.abs(v)>=10000?v.toExponential(1):v.toFixed(Math.abs(v)<1?3:1);
-      ctx.fillText(label, pad.left+2, y-1);
+    // Theme-aware colors
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const gridCol  = isDark ? '#1a1f2a' : '#e0e4ec';
+    const tickCol  = isDark ? '#2b3140' : '#c0c8d4';
+    const axisCol  = isDark ? '#2b3140' : '#b0b8c8';
+    const labelCol = isDark ? '#546070' : '#7a8898';
+
+    // Vertical axis line
+    ctx.strokeStyle = axisCol; ctx.lineWidth = 0.75;
+    ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, ch - pad.bottom); ctx.stroke();
+
+    // Y ticks + gridlines + value labels
+    const tickCount = 5;
+    ctx.font = '7.5px JetBrains Mono,monospace';
+    for (let i = 0; i <= tickCount; i++) {
+      const v = dataMin + (dataRange * i / tickCount);
+      const y = toY(v);
+
+      // Horizontal gridline
+      ctx.strokeStyle = gridCol; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(cw - pad.right, y); ctx.stroke();
+
+      // Tick mark
+      ctx.strokeStyle = tickCol; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(pad.left - 4, y); ctx.lineTo(pad.left, y); ctx.stroke();
+
+      // Value label right-aligned to the axis
+      const absV = Math.abs(v);
+      const fmtV = absV >= 100000 ? v.toExponential(1)
+                 : absV >= 1000   ? v.toFixed(0)
+                 : absV >= 10     ? v.toFixed(1)
+                 : absV >= 0.1    ? v.toFixed(2)
+                 :                  v.toExponential(1);
+      ctx.fillStyle = labelCol; ctx.textAlign = 'right';
+      ctx.fillText(fmtV, pad.left - 6, y + 2.5);
     }
 
-    if (plotType==='box') {
+    if (plotType === 'box') {
       drawBoxplot(ctx, stats, toY, pad, innerW, cw);
     } else {
       drawViolin(ctx, stats, sorted, toY, pad, innerW, cw, dataMin, dataMax, innerH);
     }
 
-    // n label
-    ctx.fillStyle='#546070'; ctx.textAlign='center'; ctx.font='7px JetBrains Mono,monospace';
-    ctx.fillText(`n=${stats.n}`, cw/2, pad.top+8);
+    // n= label near top
+    ctx.fillStyle = labelCol; ctx.textAlign = 'center'; ctx.font = '7px JetBrains Mono,monospace';
+    ctx.fillText(`n=${stats.n}`, pad.left + innerW / 2, pad.top + 8);
   });
 }
 
 function drawBoxplot(ctx, stats, toY, pad, innerW, cw) {
-  const cx = cw/2;
-  const bw = Math.max(10, innerW*0.35); // box half-width
+  const cx = pad.left + innerW / 2;   // centre of inner plot area
+  const bw = Math.max(8, innerW * 0.28);
 
   // Whisker lines
   ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5; ctx.setLineDash([2,2]);
@@ -1098,62 +1124,56 @@ function drawBoxplot(ctx, stats, toY, pad, innerW, cw) {
 
   // Whisker caps
   ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5;
-  [[stats.whiskerHi],[stats.whiskerLo]].forEach(([v])=>{
-    const y=toY(v);
-    ctx.beginPath();ctx.moveTo(cx-bw*0.4,y);ctx.lineTo(cx+bw*0.4,y);ctx.stroke();
+  [stats.whiskerHi, stats.whiskerLo].forEach(v => {
+    const y = toY(v);
+    ctx.beginPath(); ctx.moveTo(cx-bw*0.45, y); ctx.lineTo(cx+bw*0.45, y); ctx.stroke();
   });
 
   // IQR box
   const yQ1=toY(stats.q1), yQ3=toY(stats.q3);
   ctx.fillStyle='rgba(48,245,200,0.15)';
   ctx.strokeStyle='#30f5c8'; ctx.lineWidth=1.5;
-  ctx.fillRect(cx-bw,yQ3,bw*2,yQ1-yQ3);
-  ctx.strokeRect(cx-bw,yQ3,bw*2,yQ1-yQ3);
+  ctx.fillRect(cx-bw, yQ3, bw*2, yQ1-yQ3);
+  ctx.strokeRect(cx-bw, yQ3, bw*2, yQ1-yQ3);
 
   // Median
   const yMed=toY(stats.q2);
   ctx.strokeStyle='#c8f530'; ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(cx-bw,yMed);ctx.lineTo(cx+bw,yMed);ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx-bw, yMed); ctx.lineTo(cx+bw, yMed); ctx.stroke();
 
   // Outliers
-  ctx.fillStyle='rgba(200,245,48,0.5)';
-  stats.outliers.forEach(v=>{
-    const y=toY(v);
-    ctx.beginPath();ctx.arc(cx,y,2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(200,245,48,0.55)';
+  stats.outliers.forEach(v => {
+    const y = toY(v);
+    ctx.beginPath(); ctx.arc(cx, y, 2.5, 0, Math.PI*2); ctx.fill();
   });
 }
 
 function drawViolin(ctx, stats, sorted, toY, pad, innerW, cw, dataMin, dataMax, innerH) {
-  const cx = cw/2;
+  const cx = pad.left + innerW / 2;   // centre of inner plot area
   const pts = 60;
-  const ys  = Array.from({length:pts},(_,i)=>dataMin+(dataMax-dataMin)*i/(pts-1));
+  const ys  = Array.from({length:pts}, (_,i) => dataMin + (dataMax-dataMin)*i/(pts-1));
   const density = kernelDensity(sorted, null, ys);
-  const maxD = Math.max(...density)||1;
-  const vw = innerW*0.45;
+  const maxD = Math.max(...density) || 1;
+  const vw = innerW * 0.44;
 
   // Violin shape
   ctx.beginPath();
   ctx.moveTo(cx, toY(ys[0]));
-  ys.forEach((v,i)=>{
-    const x=cx+(density[i]/maxD)*vw;
-    ctx.lineTo(x, toY(v));
-  });
-  for(let i=pts-1;i>=0;i--){
-    const x=cx-(density[i]/maxD)*vw;
-    ctx.lineTo(x, toY(ys[i]));
-  }
+  ys.forEach((v, i) => ctx.lineTo(cx + (density[i]/maxD)*vw, toY(v)));
+  for (let i = pts-1; i >= 0; i--) ctx.lineTo(cx - (density[i]/maxD)*vw, toY(ys[i]));
   ctx.closePath();
   ctx.fillStyle='rgba(48,245,200,0.15)'; ctx.fill();
   ctx.strokeStyle='rgba(48,245,200,0.6)'; ctx.lineWidth=1; ctx.stroke();
 
-  // Median line
-  const yMed=toY(stats.q2);
-  ctx.strokeStyle='#c8f530'; ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(cx-6,yMed);ctx.lineTo(cx+6,yMed);ctx.stroke();
-
   // IQR bar
   ctx.strokeStyle='rgba(200,245,48,0.6)'; ctx.lineWidth=3;
-  ctx.beginPath();ctx.moveTo(cx,toY(stats.q1));ctx.lineTo(cx,toY(stats.q3));ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, toY(stats.q1)); ctx.lineTo(cx, toY(stats.q3)); ctx.stroke();
+
+  // Median tick
+  const yMed = toY(stats.q2);
+  ctx.strokeStyle='#c8f530'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(cx-7, yMed); ctx.lineTo(cx+7, yMed); ctx.stroke();
 }
 
 /* ── Utilities ────────────────────────────────────────────── */
@@ -1434,16 +1454,34 @@ function drawDendrogram() {
 
     svg.appendChild(S('rect', { x: 0, y: 0, width: cW, height: cH, fill: T.bg }));
 
-    // Depth level dividers + column name labels
+    // Depth level dividers + full column name labels (right side)
+    // Measure longest name to set label column width
+    const LBL_FONT_SZ = 8, LBL_CH_W = 4.8, LBL_PAD_R = 6;
+    const maxLblW = Math.max(...treeLevels.map(l => l.colName.length * LBL_CH_W), 20);
+
     for (let d = 0; d <= td; d++) {
       const cy = PAD.t + d * colH;
       if (d > 0) {
         svg.appendChild(S('line', { x1: 0, y1: cy - colH * 0.5, x2: cW, y2: cy - colH * 0.5, stroke: T.grid, 'stroke-width': 1 }));
       }
       const colLabel = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
-      const lbl = S('text', { x: cW - 4, y: cy, 'text-anchor': 'end', 'font-size': 8, fill: T.hdr, 'dominant-baseline': 'middle', 'font-family': 'JetBrains Mono,monospace' });
-      lbl.textContent = colLabel.length > 14 ? colLabel.slice(0, 13) + '…' : colLabel;
-      svg.appendChild(lbl);
+      // Multiline wrap: break into chunks of ~14 chars at word boundaries
+      const words = colLabel.split(/(?=[_\-. ])|(?<=[_\-. ])/);
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        if ((cur + w).length > 16 && cur.length > 0) { lines.push(cur.trim()); cur = w; }
+        else cur += w;
+      }
+      if (cur.trim()) lines.push(cur.trim());
+      const lineH = LBL_FONT_SZ + 1.5;
+      const totalH = lines.length * lineH;
+      const startY = cy - totalH / 2 + lineH / 2;
+      lines.forEach((line, li) => {
+        const t = S('text', { x: cW - LBL_PAD_R, y: startY + li * lineH, 'text-anchor': 'end', 'font-size': LBL_FONT_SZ, fill: T.hdr, 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
+        t.textContent = line;
+        svg.appendChild(t);
+      });
     }
 
     const edgeG = S('g', {}); svg.appendChild(edgeG);
@@ -1465,18 +1503,7 @@ function drawDendrogram() {
           fill: 'none', stroke: node.color, 'stroke-width': sw,
           opacity: isLeaf ? 0.9 : 0.5, 'stroke-linecap': 'round'
         }));
-        // ── Level name label on edge (at midpoint) ──
-        const edgeLabelDepth = node.depth - 1;
-        if (edgeLabelDepth < treeLevels.length) {
-          const midX = (px + x) / 2;
-          const midY = (py + y) / 2;
-          const bg = S('rect', { x: midX - 22, y: midY - 6, width: 44, height: 10, rx: 2, fill: T.bg, opacity: 0.75 });
-          edgeG.appendChild(bg);
-          const el = S('text', { x: midX, y: midY, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 7, fill: T.hdr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
-          const cn = treeLevels[edgeLabelDepth].colName;
-          el.textContent = cn.length > 10 ? cn.slice(0, 9) + '…' : cn;
-          edgeG.appendChild(el);
-        }
+        // (level name shown in column header, not on edge)
       }
 
       const g = S('g', { class: 'node-g', transform: `translate(${x},${y})` });
@@ -1519,33 +1546,70 @@ function drawDendrogram() {
 
   } else {
     // ── HORIZONTAL: root left, leaves right ────────────────
-    const PAD = { t: 28, r: 130, b: 16, l: 20 };
+    const PAD = { r: 130, b: 16, l: 20 };
     const rowH = Math.max(16, Math.min(30, 480 / Math.max(nL, 1)));
     const colW = Math.max(70, Math.min(150, 560 / Math.max(td + 1, 2)));
+
+    // Pre-compute header height (depends on longest column name and colW)
+    const LBL_LINE_H_PRE = 10;
+    const maxLinesPre = Math.max(1, ...treeLevels.map(l => {
+      const words = l.colName.split(/[_\-. ]/g).filter(Boolean);
+      const charsPerLine = Math.max(8, Math.floor(colW / 5.5));
+      let cur='', cnt=1;
+      for (const w of words) { if (cur.length > 0 && (cur+w).length > charsPerLine) { cnt++; cur=w; } else cur=(cur?cur+'_':'')+w; }
+      return cnt;
+    }));
+    const hdrHPre = Math.max(22, maxLinesPre * LBL_LINE_H_PRE + 6);
+
     const cW = PAD.l + td * colW + PAD.r;
-    const cH = PAD.t + nL * rowH + PAD.b;
+    const cH = hdrHPre + nL * rowH + PAD.b;
 
     svg.setAttribute('width', cW); svg.setAttribute('height', cH);
     svg.setAttribute('data-tw', cW); svg.setAttribute('data-th', cH);
     treeVB = { x: 0, y: 0, w: cW, h: cH };
     svg.setAttribute('viewBox', `0 0 ${cW} ${cH}`);
 
-    _assignNodeY(treeRoot, nL, rowH, PAD.t);
+    _assignNodeY(treeRoot, nL, rowH, hdrHPre);
 
     const nx = node => PAD.l + node.depth * colW;
     const ny = node => node._py;
 
     svg.appendChild(S('rect', { x: 0, y: 0, width: cW, height: cH, fill: T.bg }));
 
-    // Depth column dividers + column name labels (top)
+    // Depth column dividers + full column name labels (top row, multiline wrapped)
+    const LBL_FONT_SZ_H = 8, LBL_LINE_H = 10;
+    // Compute header row height needed for longest name
+    const maxLines = Math.max(1, ...treeLevels.map(l => {
+      const words = l.colName.split(/(?=[_\-. ])|(?<=[_\-. ])/);
+      let cur='', cnt=1;
+      for (const w of words) { if ((cur+w).length > Math.floor(colW/5.5) && cur.length > 0) { cnt++; cur=w; } else cur+=w; }
+      return cnt;
+    }));
+    const hdrH = Math.max(22, maxLines * LBL_LINE_H + 6);
+
     for (let d = 0; d <= td; d++) {
       const cx = PAD.l + d * colW;
-      if (d > 0) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: PAD.t - 8, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
+      if (d > 0) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: 0, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
       const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
-      const lbl = S('text', { x: cx, y: 14, 'text-anchor': 'middle', 'font-size': 8, fill: T.hdr, 'dominant-baseline': 'middle', 'font-family': 'JetBrains Mono,monospace' });
-      lbl.textContent = label.length > 13 ? label.slice(0, 12) + '…' : label;
-      svg.appendChild(lbl);
+      const charsPerLine = Math.max(8, Math.floor(colW / 5.5));
+      const words = label.split(/(?=[_\-. ])|(?<=[_\-. ])/);
+      const lines = [];
+      let cur = '';
+      for (const w of words) {
+        if ((cur + w).length > charsPerLine && cur.length > 0) { lines.push(cur.trim()); cur = w; }
+        else cur += w;
+      }
+      if (cur.trim()) lines.push(cur.trim());
+      const totalH = lines.length * LBL_LINE_H;
+      const startY = hdrH / 2 - totalH / 2 + LBL_LINE_H / 2;
+      lines.forEach((line, li) => {
+        const t = S('text', { x: cx, y: startY + li * LBL_LINE_H, 'text-anchor': 'middle', 'font-size': LBL_FONT_SZ_H, fill: T.hdr, 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
+        t.textContent = line;
+        svg.appendChild(t);
+      });
     }
+    // Horizontal separator under header
+    svg.appendChild(S('line', { x1: 0, y1: hdrH, x2: cW, y2: hdrH, stroke: T.grid, 'stroke-width': 1 }));
 
     const edgeG = S('g', {}); svg.appendChild(edgeG);
     const nodeG = S('g', {}); svg.appendChild(nodeG);
@@ -1566,19 +1630,7 @@ function drawDendrogram() {
           fill: 'none', stroke: node.color, 'stroke-width': sw,
           opacity: isLeaf ? 0.9 : 0.5, 'stroke-linecap': 'round'
         }));
-        // ── Level name label on edge midpoint ──
-        const edgeLabelDepth = node.depth - 1;
-        if (edgeLabelDepth < treeLevels.length && Math.abs(y - py) > 10) {
-          const midX = (px + x) / 2;
-          const midY = (py + y) / 2;
-          const cn = treeLevels[edgeLabelDepth].colName;
-          const shortCn = cn.length > 9 ? cn.slice(0, 8) + '…' : cn;
-          const tw = shortCn.length * 4.5 + 6;
-          edgeG.appendChild(S('rect', { x: midX - tw/2, y: midY - 5, width: tw, height: 10, rx: 2, fill: T.bg, opacity: 0.8 }));
-          const el = S('text', { x: midX, y: midY, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 7, fill: T.hdr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
-          el.textContent = shortCn;
-          edgeG.appendChild(el);
-        }
+        // (level name shown in column header, not on edge)
       }
 
       const g = S('g', { class: 'node-g', transform: `translate(${x},${y})` });
