@@ -596,7 +596,7 @@ function openDropdown(colName, anchorEl) {
   activeDropdownColName = colName;
   const f = activeFilters[colName]; if (!f||f.type!=='text') return;
   msSearch.value = '';
-  msList.innerHTML = f.all.map(v => `<label><input type="checkbox" data-val="${escAttr(v)}" ${f.values.has(v)?'checked':''}>${escHtml(v)||'<em style="opacity:.4">(empty)</em>'}</label>`).join('');
+  msList.innerHTML = f.all.map(v => `<label><input type="checkbox" data-val="${v}" ${f.values.has(v)?'checked':''}>${escHtml(v)||'<em style="opacity:.4">(empty)</em>'}</label>`).join('');
   msCount.textContent = f.all.length+' values';
   const rect = anchorEl.getBoundingClientRect();
   const dropW = 240;
