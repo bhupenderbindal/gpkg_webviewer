@@ -1681,7 +1681,7 @@ function drawDendrogram() {
             geojsonLayer.eachLayer(layer => {
             const idx = layer.options._featureIdx;
             if (layer.setStyle) layer.setStyle(hi.has(idx)
-              ? { color: '#fff', weight: 2.5, fillOpacity: Math.min(1, geoFillOpacity + 0.35) }
+              ? { color: '#ff0000', weight: 2.5, fillOpacity: Math.min(1, geoFillOpacity + 0.35) }
               : { opacity: 0.08, fillOpacity: 0.02 });
             });
             drawDendrogram();
