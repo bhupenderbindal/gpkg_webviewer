@@ -1587,10 +1587,12 @@ function drawDendrogram() {
     }));
     const hdrH = Math.max(22, maxLines * LBL_LINE_H + 6);
 
-    for (let d = 0; d <= td; d++) {
-      const cx = PAD.l + d * colW;
-      if (d > 0) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: 0, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
-      const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
+    // column name for each level as heading on svg-tree
+    for (let d = 0; d < td; d++) {
+      const cx = PAD.l + (d+1) * colW;
+      if (d < td) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: 0, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
+      // const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
+      const label = treeLevels[d].colName;
       const charsPerLine = Math.max(8, Math.floor(colW / 5.5));
       const words = label.split(/(?=[_\-. ])|(?<=[_\-. ])/);
       const lines = [];
@@ -1648,6 +1650,12 @@ function drawDendrogram() {
       if (!isRoot && !isLeaf) {
         const cnt = S('text', { x: r + 6, y: 10, 'text-anchor': 'start', 'font-size': 7.5, fill: T.cntClr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
         cnt.textContent = `n=${node.featureIndices.length}`; g.appendChild(cnt);
+      }
+      else{
+        // show count n on leaves too
+        const cnt = S('text', { x: r + 6, y: 10, 'text-anchor': 'start', 'font-size': 7.5, fill: T.cntClr, 'pointer-events': 'none', 'font-family': 'JetBrains Mono,monospace' });
+        cnt.textContent = `n=${node.featureIndices.length}`; g.appendChild(cnt);
+
       }
 
       const tipHtml = () =>
