@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Crop Tool</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 20px;
+        color: #333;
+      }
+
+      .main-container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .controls {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 15px;
+        margin-bottom: 15px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-end;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .control-group label {
+        color: #666;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .control-group input,
+      .control-group select {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: #fff;
+        color: #333;
+        font-size: 13px;
+        min-width: 100px;
+      }
+
+      .control-group input:focus,
+      .control-group select:focus {
+        outline: none;
+        border-color: #666;
+      }
+
+      .btn {
+        padding: 8px 14px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        font-size: 13px;
+        cursor: pointer;
+        background: #fff;
+        color: #333;
+        transition: background 0.15s;
+      }
+      .btn:hover {
+        background: #f0f0f0;
+      }
+      .btn-primary {
+        background: #333;
+        color: #fff;
+        border-color: #333;
+      }
+      .btn-primary:hover {
+        background: #444;
+      }
+
+      #drop-zone {
+        border: 2px dashed #ccc;
+        border-radius: 4px;
+        padding: 30px 20px;
+        text-align: center;
+        color: #888;
+        cursor: pointer;
+        margin-bottom: 15px;
+        background: #fff;
+      }
+      #drop-zone:hover,
+      #drop-zone.hover {
+        border-color: #888;
+        background: #fafafa;
+      }
+      #drop-zone h2 {
+        margin: 0 0 5px 0;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      #drop-zone p {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      #grid-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 400px);
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .grid-item {
+        position: relative;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        overflow: hidden;
+        width: 400px;
+      }
+      .grid-item:hover .item-actions {
+        opacity: 1;
+      }
+
+      .image-container {
+        width: 400px;
+        height: 400px;
+        position: relative;
+        background: #eee;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        touch-action: none;
+      }
+
+      .image-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        display: block;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .crop-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+      }
+      .crop-overlay svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .item-actions {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        display: flex;
+        gap: 3px;
+        opacity: 0;
+        transition: opacity 0.15s;
+        z-index: 10;
+      }
+
+      .item-btn {
+        width: 26px;
+        height: 26px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.9);
+        color: #333;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+      .item-btn:hover {
+        background: #fff;
+      }
+      .item-btn.delete {
+        color: #c00;
+      }
+
+      .item-info {
+        padding: 6px 8px;
+        font-size: 11px;
+        color: #666;
+        border-top: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+      }
+      .item-filename {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex: 1;
+      }
+      .item-dimensions {
+        color: #999;
+        margin-left: 8px;
+        white-space: nowrap;
+      }
+
+      .bulk-actions {
+        display: flex;
+        gap: 8px;
+        margin-left: auto;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #333;
+        color: white;
+        padding: 10px 16px;
+        border-radius: 3px;
+        font-size: 13px;
+        transform: translateY(100px);
+        opacity: 0;
+        transition: all 0.2s;
+        z-index: 1000;
+      }
+      .toast.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      #processing-canvas {
+        display: none;
+      }
+
+      @media (max-width: 600px) {
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .bulk-actions {
+          margin-left: 0;
+          flex-wrap: wrap;
+        }
+        #grid-container {
+          grid-template-columns: repeat(auto-fill, 160px);
+        }
+        .grid-item,
+        .image-container {
+          width: 160px;
+        }
+        .image-container {
+          height: 120px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <div class="controls">
+        <div class="control-group">
+          <label>Width (px)</label>
+          <input
+            type="number"
+            id="crop-width"
+            value="800"
+            min="50"
+            max="4000"
+          />
+        </div>
+        <div class="control-group">
+          <label>Height (px)</label>
+          <input
+            type="number"
+            id="crop-height"
+            value="600"
+            min="50"
+            max="4000"
+          />
+        </div>
+        <div class="control-group">
+          <label>Position</label>
+          <select id="crop-position">
+            <option value="center">Center</option>
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+            <option value="top-left">Top Left</option>
+            <option value="top-right">Top Right</option>
+            <option value="bottom-left">Bottom Left</option>
+            <option value="bottom-right">Bottom Right</option>
+            <option value="custom">Custom (drag to position)</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Format</label>
+          <select id="output-format">
+            <option value="image/png">PNG</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Quality %</label>
+          <input type="number" id="quality" value="100" min="1" max="100" />
+        </div>
+
+        <div class="bulk-actions">
+          <button class="btn btn-primary" onclick="downloadAll()">
+            Download All
+          </button>
+          <button class="btn" onclick="copyAll()">Copy</button>
+          <button class="btn" onclick="clearAll()">Clear</button>
+        </div>
+      </div>
+
+      <input
+        type="file"
+        id="file-input"
+        multiple
+        accept="image/*"
+        style="display: none"
+      />
+      <div id="drop-zone">
+        <h2>Drop Images Here</h2>
+        <p>
+          or click to browse &mdash; Shaded area shows what will be cropped out
+        </p>
+      </div>
+
+      <div id="grid-container"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <canvas id="processing-canvas"></canvas>
+
+    <script>
+      /* ── refs ── */
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = document.getElementById("file-input");
+      const gridContainer = document.getElementById("grid-container");
+      const canvas = document.getElementById("processing-canvas");
+      const ctx = canvas.getContext("2d");
+      const positionSelect = document.getElementById("crop-position");
+
+      /* id → { original, filename, img, width, height, cx, cy }
+         cx/cy are normalised 0-1 custom centre coordinates */
+      const imageStore = new Map();
+      let maskIdCounter = 0;
+
+      /* ── click-to-upload ── */
+      dropZone.addEventListener("click", () => fileInput.click());
+      fileInput.addEventListener("change", (e) => {
+        handleFiles(e.target.files);
+        fileInput.value = "";
+      });
+
+      /* ── drag-and-drop ── */
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((ev) => {
+        dropZone.addEventListener(ev, preventDefaults, false);
+        document.body.addEventListener(ev, preventDefaults, false);
+      });
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      ["dragenter", "dragover"].forEach((ev) =>
+        dropZone.addEventListener(
+          ev,
+          () => dropZone.classList.add("hover"),
+          false,
+        ),
+      );
+      ["dragleave", "drop"].forEach((ev) =>
+        dropZone.addEventListener(
+          ev,
+          () => dropZone.classList.remove("hover"),
+          false,
+        ),
+      );
+      dropZone.addEventListener(
+        "drop",
+        (e) => handleFiles(e.dataTransfer.files),
+        false,
+      );
+
+      /* ── settings ── */
+      function getSettings() {
+        return {
+          width: parseInt(document.getElementById("crop-width").value) || 800,
+          height: parseInt(document.getElementById("crop-height").value) || 600,
+          position: positionSelect.value,
+          format: document.getElementById("output-format").value,
+          quality: parseInt(document.getElementById("quality").value) / 100,
+        };
+      }
+
+      /* ──────────────────────────────────────────────────
+         getCropArea  — cover-crop with optional custom centre
+         ────────────────────────────────────────────────── */
+      function getCropArea(imgW, imgH, targetW, targetH, position, cx, cy) {
+        const imgRatio = imgW / imgH;
+        const targetRatio = targetW / targetH;
+
+        const srcW = Math.min(targetW, imgW);
+        const srcH = Math.min(targetH, imgH);
+
+        let srcX, srcY;
+
+        if (position === "custom" && cx !== undefined && cy !== undefined) {
+          // Centre the crop on the custom point, clamped to image bounds
+          srcX = cx * imgW - srcW / 2;
+          srcY = cy * imgH - srcH / 2;
+          srcX = Math.max(0, Math.min(srcX, imgW - srcW));
+          srcY = Math.max(0, Math.min(srcY, imgH - srcH));
+        } else {
+          switch (position) {
+            case "top":
+              srcX = (imgW - srcW) / 2;
+              srcY = 0;
+              break;
+            case "bottom":
+              srcX = (imgW - srcW) / 2;
+              srcY = imgH - srcH;
+              break;
+            case "left":
+              srcX = 0;
+              srcY = (imgH - srcH) / 2;
+              break;
+            case "right":
+              srcX = imgW - srcW;
+              srcY = (imgH - srcH) / 2;
+              break;
+            case "top-left":
+              srcX = 0;
+              srcY = 0;
+              break;
+            case "top-right":
+              srcX = imgW - srcW;
+              srcY = 0;
+              break;
+            case "bottom-left":
+              srcX = 0;
+              srcY = imgH - srcH;
+              break;
+            case "bottom-right":
+              srcX = imgW - srcW;
+              srcY = imgH - srcH;
+              break;
+            default: // center
+              srcX = (imgW - srcW) / 2;
+              srcY = (imgH - srcH) / 2;
+          }
+        }
+        console.log({ srcX, srcY, srcW, srcH });
+        return { srcX, srcY, srcW, srcH };
+      }
+
+      /* ── overlay SVG (with optional crosshair for custom mode) ── */
+      function generateCropOverlay(
+        imgW,
+        imgH,
+        containerW,
+        containerH,
+        settings,
+        cx,
+        cy,
+      ) {
+        const { width: targetW, height: targetH, position } = settings;
+        const crop = getCropArea(
+          imgW,
+          imgH,
+          targetW,
+          targetH,
+          position,
+          cx,
+          cy,
+        );
+
+        const imgRatio = imgW / imgH;
+        const containerRatio = containerW / containerH;
+
+        let displayW, displayH, offsetX, offsetY;
+        if (imgRatio > containerRatio) {
+          displayW = containerW;
+          displayH = containerW / imgRatio;
+          offsetX = 0;
+          offsetY = (containerH - displayH) / 2;
+        } else {
+          displayH = containerH;
+          displayW = containerH * imgRatio;
+          offsetX = (containerW - displayW) / 2;
+          offsetY = 0;
+        }
+
+        const scale = displayW / imgW;
+        const cropX = offsetX + crop.srcX * scale;
+        const cropY = offsetY + crop.srcY * scale;
+        const cropW = crop.srcW * scale;
+        const cropH = crop.srcH * scale;
+
+        const maskId = `cm${maskIdCounter++}`;
+
+        // Crosshair + circle at crop centre when in custom mode
+        let centerMarkup = "";
+        if (position === "custom") {
+          const px = cropX + cropW / 2;
+          const py = cropY + cropH / 2;
+          centerMarkup = `
+            <line x1="${px - 7}" y1="${py}" x2="${px + 7}" y2="${py}"
+                  stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+            <line x1="${px}" y1="${py - 7}" x2="${px}" y2="${py + 7}"
+                  stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+            <circle cx="${px}" cy="${py}" r="5"
+                    fill="none" stroke="#fff" stroke-width="1.5" opacity="0.85"/>
+          `;
+        }
+        console.log({ cropX, cropY, cropW, cropH });
+
+        return `
+          <svg viewBox="0 0 ${containerW} ${containerH}" preserveAspectRatio="none">
+            <defs>
+              <mask id="${maskId}">
+                <rect width="100%" height="100%" fill="white"/>
+                <rect x="${cropX}" y="${cropY}" width="${cropW}" height="${cropH}" fill="black"/>
+              </mask>
+            </defs>
+            <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#${maskId})"/>
+            <rect x="${cropX}" y="${cropY}" width="${cropW}" height="${cropH}"
+                  fill="none" stroke="rgba(255,255,255,0.8)" stroke-width="1" stroke-dasharray="4,2"/>
+            ${centerMarkup}
+          </svg>
+        `;
+      }
+
+      /* ── crop to canvas data URL ── */
+      function cropImage(img, settings, cx, cy) {
+        const { width, height, position, format, quality } = settings;
+        const crop = getCropArea(
+          img.naturalWidth,
+          img.naturalHeight,
+          width,
+          height,
+          position,
+          cx,
+          cy,
+        );
+        canvas.width = crop.srcW;
+        canvas.height = crop.srcH;
+        ctx.drawImage(
+          img,
+          crop.srcX,
+          crop.srcY,
+          crop.srcW,
+          crop.srcH,
+          0,
+          0,
+          crop.srcW,
+          crop.srcH,
+        );
+        return canvas.toDataURL(format, quality);
+      }
+
+      /* ── file handling ── */
+      function handleFiles(files) {
+        [...files]
+          .filter((f) => f.type.startsWith("image/"))
+          .forEach((file) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = function () {
+              const dataUrl = reader.result;
+              const img = new Image();
+              img.onload = function () {
+                const id =
+                  Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+                imageStore.set(id, {
+                  original: dataUrl,
+                  filename: file.name,
+                  img,
+                  width: img.naturalWidth,
+                  height: img.naturalHeight,
+                  cx: 0.5,
+                  cy: 0.5,
+                });
+                addToGrid(
+                  id,
+                  dataUrl,
+                  file.name,
+                  img.naturalWidth,
+                  img.naturalHeight,
+                );
+              };
+              img.src = dataUrl;
+            };
+          });
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement("div");
+        d.textContent = s;
+        return d.innerHTML;
+      }
+
+      /* ── build grid card ── */
+      function addToGrid(id, imageUrl, filename, width, height) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "grid-item";
+        wrapper.dataset.id = id;
+
+        const settings = getSettings();
+        const stored = imageStore.get(id);
+        const overlay = generateCropOverlay(
+          width,
+          height,
+          400,
+          400,
+          settings,
+          stored.cx,
+          stored.cy,
+        );
+        const safe = escapeHtml(filename);
+
+        wrapper.innerHTML = `
+          <div class="item-actions">
+            <button class="item-btn" data-action="copy" title="Copy">📋</button>
+            <button class="item-btn" data-action="download" title="Download">⬇</button>
+            <button class="item-btn delete" data-action="delete" title="Delete">✕</button>
+          </div>
+          <div class="image-container">
+            <img src="${imageUrl}" alt="${safe}">
+            <div class="crop-overlay">${overlay}</div>
+          </div>
+          <div class="item-info">
+            <span class="item-filename" title="${safe}">${safe}</span>
+            <span class="item-dimensions">${width}×${height}</span>
+          </div>
+        `;
+
+        gridContainer.appendChild(wrapper);
+      }
+
+      /* ── event delegation: item action buttons ── */
+      gridContainer.addEventListener("click", function (e) {
+        const btn = e.target.closest("[data-action]");
+        if (!btn) return;
+        const item = btn.closest(".grid-item");
+        if (!item) return;
+        const id = item.dataset.id;
+        switch (btn.dataset.action) {
+          case "copy":
+            copyImage(id);
+            break;
+          case "download":
+            downloadImage(id);
+            break;
+          case "delete":
+            deleteImage(id);
+            break;
+        }
+      });
+
+      /* ─────────────────────────────────────────────
+         Draggable custom crop centre (pointer events)
+         ───────────────────────────────────────────── */
+
+      // Convert a pointer event on the thumbnail container to
+      // normalised 0–1 coordinates within the source image.
+      function pointerToImageNorm(e, container, imgW, imgH) {
+        const rect = container.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const cW = rect.width;
+        const cH = rect.height;
+
+        const imgRatio = imgW / imgH;
+        const cRatio = cW / cH;
+        let dW, dH, oX, oY;
+        if (imgRatio > cRatio) {
+          dW = cW;
+          dH = cW / imgRatio;
+          oX = 0;
+          oY = (cH - dH) / 2;
+        } else {
+          dH = cH;
+          dW = cH * imgRatio;
+          oX = (cW - dW) / 2;
+          oY = 0;
+        }
+
+        return {
+          nx: Math.max(0, Math.min(1, (mx - oX) / dW)),
+          ny: Math.max(0, Math.min(1, (my - oY) / dH)),
+        };
+      }
+
+      let draggingId = null;
+
+      gridContainer.addEventListener("pointerdown", function (e) {
+        // Ignore action-button clicks
+        if (e.target.closest("[data-action]")) return;
+
+        const container = e.target.closest(".image-container");
+        if (!container) return;
+        const item = container.closest(".grid-item");
+        if (!item) return;
+        const id = item.dataset.id;
+        const stored = imageStore.get(id);
+        if (!stored) return;
+
+        // Auto-switch to custom mode
+        if (positionSelect.value !== "custom") {
+          positionSelect.value = "custom";
+        }
+
+        draggingId = id;
+        container.setPointerCapture(e.pointerId);
+
+        const { nx, ny } = pointerToImageNorm(
+          e,
+          container,
+          stored.width,
+          stored.height,
+        );
+        // Sync crop centre to ALL images
+        imageStore.forEach((s) => {
+          s.cx = nx;
+          s.cy = ny;
+        });
+        updateAllOverlays();
+      });
+
+      gridContainer.addEventListener("pointermove", function (e) {
+        if (!draggingId) return;
+        const stored = imageStore.get(draggingId);
+        if (!stored) return;
+        const item = gridContainer.querySelector(`[data-id="${draggingId}"]`);
+        if (!item) return;
+        const container = item.querySelector(".image-container");
+
+        const { nx, ny } = pointerToImageNorm(
+          e,
+          container,
+          stored.width,
+          stored.height,
+        );
+        // Sync crop centre to ALL images
+        imageStore.forEach((s) => {
+          s.cx = nx;
+          s.cy = ny;
+        });
+        updateAllOverlays();
+      });
+
+      gridContainer.addEventListener("pointerup", () => {
+        draggingId = null;
+      });
+      gridContainer.addEventListener("pointercancel", () => {
+        draggingId = null;
+      });
+
+      /* ── overlay refresh helpers ── */
+      function updateOverlayForId(id) {
+        const stored = imageStore.get(id);
+        if (!stored) return;
+        const item = gridContainer.querySelector(`[data-id="${id}"]`);
+        if (!item) return;
+        item.querySelector(".crop-overlay").innerHTML = generateCropOverlay(
+          stored.width,
+          stored.height,
+          400,
+          400,
+          getSettings(),
+          stored.cx,
+          stored.cy,
+        );
+      }
+
+      function updateAllOverlays() {
+        const settings = getSettings();
+        imageStore.forEach((stored, id) => {
+          const item = gridContainer.querySelector(`[data-id="${id}"]`);
+          if (item) {
+            item.querySelector(".crop-overlay").innerHTML = generateCropOverlay(
+              stored.width,
+              stored.height,
+              400,
+              400,
+              settings,
+              stored.cx,
+              stored.cy,
+            );
+          }
+        });
+      }
+
+      document
+        .querySelectorAll(".controls input, .controls select")
+        .forEach((el) => {
+          el.addEventListener("change", updateAllOverlays);
+          el.addEventListener("input", updateAllOverlays);
+        });
+
+      /* ── copy ── */
+      async function copyImage(id) {
+        const stored = imageStore.get(id);
+        if (!stored) return;
+        const settings = getSettings();
+        const crop = getCropArea(
+          stored.img.naturalWidth,
+          stored.img.naturalHeight,
+          settings.width,
+          settings.height,
+          settings.position,
+          stored.cx,
+          stored.cy,
+        );
+        canvas.width = crop.srcW;
+        canvas.height = crop.srcH;
+        ctx.drawImage(
+          stored.img,
+          crop.srcX,
+          crop.srcY,
+          crop.srcW,
+          crop.srcH,
+          0,
+          0,
+          crop.srcW,
+          crop.srcH,
+        );
+        try {
+          const blob = await new Promise((res, rej) =>
+            canvas.toBlob(
+              (b) => (b ? res(b) : rej(new Error("toBlob failed"))),
+              "image/png",
+            ),
+          );
+          await navigator.clipboard.write([
+            new ClipboardItem({ "image/png": blob }),
+          ]);
+          showToast("Copied to clipboard");
+        } catch (err) {
+          console.error("Copy failed:", err);
+          showToast("Copy failed — try using HTTPS");
+        }
+      }
+
+      /* ── download ── */
+      function downloadImage(id) {
+        const stored = imageStore.get(id);
+        if (!stored) return;
+        const settings = getSettings();
+        const croppedUrl = cropImage(
+          stored.img,
+          settings,
+          stored.cx,
+          stored.cy,
+        );
+        let ext = settings.format.split("/")[1];
+        if (ext === "jpeg") ext = "jpg";
+        const link = document.createElement("a");
+        link.href = croppedUrl;
+        link.download = `${stored.filename.replace(/\.[^/.]+$/, "")}_cropped.${ext}`;
+        link.click();
+      }
+
+      /* ── delete ── */
+      function deleteImage(id) {
+        const item = gridContainer.querySelector(`[data-id="${id}"]`);
+        if (item) {
+          item.remove();
+          imageStore.delete(id);
+        }
+      }
+
+      /* ── bulk actions ── */
+      async function downloadAll() {
+        const items = gridContainer.querySelectorAll(".grid-item");
+        if (!items.length) {
+          showToast("No images");
+          return;
+        }
+        const settings = getSettings();
+        let ext = settings.format.split("/")[1];
+        if (ext === "jpeg") ext = "jpg";
+
+        items.forEach((item, i) => {
+          const id = item.dataset.id;
+          const stored = imageStore.get(id);
+          if (stored) {
+            const url = cropImage(stored.img, settings, stored.cx, stored.cy);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${stored.filename.replace(/\.[^/.]+$/, "")}_cropped.${ext}`;
+            setTimeout(() => link.click(), i * 200);
+          }
+        });
+        showToast(`Downloading ${items.length} images`);
+      }
+
+      async function copyAll() {
+        const items = gridContainer.querySelectorAll(".grid-item");
+        if (!items.length) {
+          showToast("No images");
+          return;
+        }
+        await copyImage(items[0].dataset.id);
+        if (items.length > 1)
+          showToast("Copied first image (clipboard supports one at a time)");
+      }
+
+      function clearAll() {
+        gridContainer.innerHTML = "";
+        imageStore.clear();
+        showToast("Cleared");
+      }
+
+      /* ── toast ── */
+      let toastTimeout = null;
+      function showToast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        if (toastTimeout) clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+          t.classList.remove("show");
+          toastTimeout = null;
+        }, 2000);
+      }
+    </script>
+  </body>
+</html>
