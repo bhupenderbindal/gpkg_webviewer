@@ -283,12 +283,43 @@ html[data-theme="light"] .leaflet-bar a { background: var(--panel); color: var(-
 html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"] .leaflet-popup-tip { background: var(--panel); color: var(--text); }
 /* Disclaimer badge */
 .disclaimer{position:fixed;bottom:6px;right:8px;z-index:2000;font-family:'JetBrains Mono',monospace;font-size:.53rem;color:var(--muted);background:var(--panel);border:1px solid var(--border);border-radius:3px;padding:2px 7px;opacity:.65;pointer-events:none;line-height:1.5;text-align:right}
+
+/* Node order popup */
+.node-order-popup{position:fixed;z-index:4000;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.55);padding:0;min-width:170px;max-width:260px;font-family:'JetBrains Mono',monospace;font-size:.67rem;color:var(--text);display:none}
+.node-order-popup.open{display:block}
+.nop-head{display:flex;align-items:center;gap:5px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.nop-head strong{color:var(--accent2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem;text-transform:none;letter-spacing:0}
+.nop-head .nop-close{cursor:pointer;color:var(--muted);font-size:.85rem;padding:0 2px;transition:color .12s;flex-shrink:0}
+.nop-head .nop-close:hover{color:var(--danger)}
+.nop-hint{font-size:.57rem;color:var(--muted);padding:3px 8px 0;line-height:1.5}
+.nop-list{display:flex;flex-direction:column;gap:2px;padding:5px 6px;max-height:220px;overflow-y:auto}
+.nop-list::-webkit-scrollbar{width:3px}
+.nop-list::-webkit-scrollbar-thumb{background:var(--border2)}
+.nop-row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:2px;background:var(--panel3);border:1px solid var(--border)}
+.nop-row-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.65rem}
+.nop-row-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.7rem;padding:0 2px;line-height:1;transition:color .1s;flex-shrink:0}
+.nop-row-btn:hover{color:var(--accent)}
+.nop-auto-badge{font-size:.53rem;padding:0 4px;border-radius:2px;background:rgba(48,245,200,.12);border:1px solid rgba(48,245,200,.25);color:var(--accent2);white-space:nowrap;flex-shrink:0}
+.nop-foot{padding:4px 6px;border-top:1px solid var(--border);display:flex;gap:3px;justify-content:flex-end}
+.tree-level-chip.has-order{border-color:var(--accent2);color:var(--accent2)}
+.tree-level-chip .lc-ord{font-size:.53rem;color:var(--accent2);margin-left:2px;cursor:pointer}
 </style>
 <body>
 
 <div class="overlay" id="overlay"><div class="spinner"><div class="spinner-ring"></div><div id="overlay-msg">Loading…</div></div></div>
 <div class="geo-tooltip" id="geoTooltip"></div>
 <div class="disclaimer">Built with AI assistance. <br>Verify outputs independently.</div>
+
+<!-- Node order popup -->
+<div class="node-order-popup" id="nodeOrderPopup">
+  <div class="nop-head"><strong id="nopColName"></strong><span class="nop-close" id="nopClose">×</span></div>
+  <div class="nop-hint" id="nopHint"></div>
+  <div class="nop-list" id="nopList"></div>
+  <div class="nop-foot">
+    <button class="btn-sm" id="nopReset">Reset</button>
+    <button class="btn-sm accent" id="nopApply">Apply</button>
+  </div>
+</div>
 
 <!-- Singleton dropdown -->
 <div class="ms-dropdown" id="msDropdown">
@@ -857,7 +888,7 @@ function _applyFilters() {
   const sql=`SELECT "${geomColumn}" AS _gpkg_geom_, * FROM "${currentLayer}" ${where}`;
   let res; try{res=db.exec(sql);}catch(e){throw new Error(e.message+'\n'+sql);}
 
-  if(!res.length||!res[0].values.length){clearMap();hideOverlay();document.getElementById('resultInfo').innerHTML='<strong>0</strong> features';currentFeatures=[];return;}
+  if(!res.length||!res[0].values.length){clearMap();hideOverlay();document.getElementById('resultInfo').innerHTML='<strong>0</strong> features';currentFeatures=[];rebuildTreeIfActive();return;}
 
   const cols=res[0].columns; const geomIdx=cols.indexOf('_gpkg_geom_');
   let failed=0; const features=[];
@@ -1294,7 +1325,11 @@ document.getElementById('treeAddLevelBtn').addEventListener('click', () => {
   const colName = sel.value;
   if (!colName || !db) return;
   let nDistinct = 0;
-  try { const r = db.exec(`SELECT COUNT(DISTINCT "${colName}") FROM "${currentLayer}"`); if (r.length) nDistinct = r[0].values[0][0]; } catch (e) {}
+  if (currentFeatures.length > 0) {
+    nDistinct = new Set(currentFeatures.map(f => f.properties[colName])).size;
+  } else {
+    try { const r = db.exec(`SELECT COUNT(DISTINCT "${colName}") FROM "${currentLayer}"`); if (r.length) nDistinct = r[0].values[0][0]; } catch (e) {}
+  }
   const warn = document.getElementById('treeMaxValWarn');
   if (nDistinct > TREE_MAX_VALS) { warn.textContent = `\u26a0 ${nDistinct} distinct values \u2014 max is ${TREE_MAX_VALS}`; return; }
   warn.textContent = '';
@@ -1316,16 +1351,38 @@ document.getElementById('treeClearBtn').addEventListener('click', () => {
 
 function renderLevelChips() {
   const list = document.getElementById('treeLevelList');
-  list.innerHTML = treeLevels.map((l, i) => `
-    <span class="tree-level-chip">
+  list.innerHTML = treeLevels.map((l, i) => {
+    const hasCustom = !!l.order;
+    const vals = currentFeatures.length
+      ? [...new Set(currentFeatures.map(f => String(f.properties[l.colName] ?? '∅')))]
+      : [];
+    const isAuto = !hasCustom && vals.length > 0 && !!tryAutoOrder(vals, ['low', 'medium', 'high']);
+    const orderIndicator = hasCustom
+      ? `<span class="lc-ord" data-i="${i}" title="Custom order active — click to edit">⇅</span>`
+      : isAuto
+        ? `<span class="lc-ord" data-i="${i}" title="Auto order (low→medium→high) — click to override">⇅</span>`
+        : `<span class="lc-ord" data-i="${i}" title="Click to set node order">⇅</span>`;
+    return `<span class="tree-level-chip${hasCustom || isAuto ? ' has-order' : ''}" data-i="${i}">
       <span class="lc-num">L${i + 1}</span>${escHtml(l.colName)}
+      ${orderIndicator}
       <span class="lc-rm" data-i="${i}">\xd7</span>
-    </span>`).join('');
-  list.querySelectorAll('.lc-rm').forEach(btn => btn.addEventListener('click', () => {
+    </span>`;
+  }).join('');
+
+  list.querySelectorAll('.lc-rm').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    closeNodeOrderPopup();
     treeLevels.splice(+btn.dataset.i, 1);
     renderLevelChips(); treePopulatePicker();
     if (treeLevels.length) buildTree(); else document.getElementById('treeClearBtn').click();
   }));
+
+  list.querySelectorAll('.lc-ord').forEach(btn => btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!currentFeatures.length) return;
+    openNodeOrderPopup(+btn.dataset.i, btn);
+  }));
+
   const has = treeLevels.length > 0;
   document.getElementById('treeClearBtn').style.display = has ? 'inline-block' : 'none';
   document.getElementById('treeFitBtn').style.display = has ? 'inline-block' : 'none';
@@ -1333,7 +1390,16 @@ function renderLevelChips() {
 
 // ── Build data tree ──────────────────────────────────────
 function buildTree() {
-  if (!currentFeatures.length || !treeLevels.length) return;
+  if (!treeLevels.length) return;
+  if (!currentFeatures.length) {
+    treeRoot = null; featureColorMap.clear();
+    const svg = document.getElementById('treeSvg');
+    svg.innerHTML = ''; svg.removeAttribute('width'); svg.removeAttribute('height');
+    document.getElementById('treeEmptyMsg').style.display = 'flex';
+    document.getElementById('treeLegendBar').style.display = 'none';
+    if (geojsonLayer) geojsonLayer.setStyle(() => ({ color: geoStroke, fillColor: geoFill, fillOpacity: geoFillOpacity, weight: 1.5, opacity: .9 }));
+    return;
+  }
   featureColorMap.clear();
 
   function makeNode(indices, depth, value) {
@@ -1346,11 +1412,38 @@ function buildTree() {
         if (!groups.has(v)) groups.set(v, []);
         groups.get(v).push(idx);
       });
-      [...groups.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
-        .forEach(([val, arr]) => node.children.push(makeNode(arr, depth + 1, val)));
+      const level = treeLevels[depth];
+      const sortedEntries = sortLevelEntries([...groups.entries()], level);
+      sortedEntries.forEach(([val, arr]) => node.children.push(makeNode(arr, depth + 1, val)));
     }
     return node;
+  }
+
+  function sortLevelEntries(entries, level) {
+    // If user has defined a custom order, use it
+    if (level.order && level.order.length > 0) {
+      const orderMap = new Map(level.order.map((v, i) => [v, i]));
+      return entries.slice().sort((a, b) => {
+        const ia = orderMap.has(a[0]) ? orderMap.get(a[0]) : Infinity;
+        const ib = orderMap.has(b[0]) ? orderMap.get(b[0]) : Infinity;
+        if (ia !== ib) return ia - ib;
+        return a[0].localeCompare(b[0], undefined, { numeric: true });
+      });
+    }
+    // Auto-detect low/medium/high prefix ordering
+    const LOW_MED_HIGH = ['low', 'medium', 'high'];
+    const autoOrder = tryAutoOrder(entries.map(e => e[0]), LOW_MED_HIGH);
+    if (autoOrder) {
+      const orderMap = new Map(autoOrder.map((v, i) => [v, i]));
+      return entries.slice().sort((a, b) => {
+        const ia = orderMap.has(a[0]) ? orderMap.get(a[0]) : Infinity;
+        const ib = orderMap.has(b[0]) ? orderMap.get(b[0]) : Infinity;
+        if (ia !== ib) return ia - ib;
+        return a[0].localeCompare(b[0], undefined, { numeric: true });
+      });
+    }
+    // Fallback: alphabetical
+    return entries.slice().sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
   }
 
   treeRoot = makeNode(currentFeatures.map((_, i) => i), 0, 'ALL');
@@ -1360,7 +1453,130 @@ function buildTree() {
   applyTreeColoring();
   renderTreeLegend();
   document.getElementById('treeEmptyMsg').style.display = 'none';
+  renderLevelChips(); // refresh order badges
 }
+
+// ── Auto-order detection ─────────────────────────────────
+// Returns ordered value list if ALL values have a recognised prefix; null otherwise.
+function tryAutoOrder(values, prefixes) {
+  const buckets = prefixes.map(() => []);
+  for (const v of values) {
+    const lv = v.toLowerCase();
+    const idx = prefixes.findIndex(p => lv.startsWith(p));
+    if (idx === -1) return null; // at least one value doesn't match → no auto order
+    buckets[idx].push(v);
+  }
+  // Flatten in prefix order
+  return buckets.flat();
+}
+
+// ── Node-order popup ──────────────────────────────────────
+const _nopEl    = document.getElementById('nodeOrderPopup');
+const _nopList  = document.getElementById('nopList');
+const _nopCol   = document.getElementById('nopColName');
+const _nopHint  = document.getElementById('nopHint');
+let   _nopLevelIdx = -1;
+let   _nopWorkOrder = []; // working copy of value order in popup
+
+document.getElementById('nopClose').addEventListener('click', closeNodeOrderPopup);
+document.addEventListener('mousedown', e => {
+  if (!_nopEl.contains(e.target) && !e.target.closest('.lc-ord')) closeNodeOrderPopup();
+});
+
+function closeNodeOrderPopup() { _nopEl.classList.remove('open'); _nopLevelIdx = -1; }
+
+function openNodeOrderPopup(levelIdx, anchorEl) {
+  if (_nopLevelIdx === levelIdx) { closeNodeOrderPopup(); return; }
+  _nopLevelIdx = levelIdx;
+  const level = treeLevels[levelIdx];
+  _nopCol.textContent = level.colName;
+
+  // Gather distinct values for this level from current features
+  const vals = [...new Set(currentFeatures.map(f => String(f.properties[level.colName] ?? '∅')))];
+
+  // Determine if auto-order applies
+  const autoOrd = tryAutoOrder(vals, ['low', 'medium', 'high']);
+  const isAuto = autoOrd && !level.order;
+
+  if (isAuto) {
+    _nopHint.textContent = 'Auto order detected (low → medium → high). Drag or use arrows to override.';
+    _nopWorkOrder = autoOrd.slice();
+  } else if (level.order) {
+    _nopHint.textContent = 'Custom order active. Drag or use arrows to rearrange.';
+    // Ensure any new values not in saved order are appended
+    _nopWorkOrder = level.order.slice();
+    vals.forEach(v => { if (!_nopWorkOrder.includes(v)) _nopWorkOrder.push(v); });
+  } else {
+    _nopHint.textContent = 'Set a custom order. Drag or use arrows to rearrange.';
+    _nopWorkOrder = vals.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }
+
+  renderNopList(isAuto);
+
+  // Position popup near anchor
+  const rect = anchorEl.getBoundingClientRect();
+  let left = rect.left, top = rect.bottom + 4;
+  if (left + 260 > window.innerWidth - 8) left = window.innerWidth - 268;
+  if (top + 300 > window.innerHeight - 8) top = rect.top - 4 - Math.min(300, _nopEl.offsetHeight || 280);
+  _nopEl.style.left = left + 'px'; _nopEl.style.top = top + 'px';
+  _nopEl.classList.add('open');
+}
+
+function renderNopList(isAuto) {
+  _nopList.innerHTML = '';
+  _nopWorkOrder.forEach((v, i) => {
+    const row = document.createElement('div');
+    row.className = 'nop-row';
+    row.draggable = true;
+    row.dataset.idx = i;
+    const autoMatch = ['low', 'medium', 'high'].some(p => v.toLowerCase().startsWith(p));
+    row.innerHTML =
+      `<span class="nop-row-lbl" title="${escHtml(v)}">${escHtml(v)}</span>` +
+      (isAuto && autoMatch ? `<span class="nop-auto-badge">auto</span>` : '') +
+      `<button class="nop-row-btn" data-dir="-1" title="Move up">▲</button>` +
+      `<button class="nop-row-btn" data-dir="1"  title="Move down">▼</button>`;
+    row.querySelectorAll('.nop-row-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const from = +row.dataset.idx, to = from + +btn.dataset.dir;
+        if (to < 0 || to >= _nopWorkOrder.length) return;
+        [_nopWorkOrder[from], _nopWorkOrder[to]] = [_nopWorkOrder[to], _nopWorkOrder[from]];
+        renderNopList(false);
+      });
+    });
+
+    // Drag-and-drop reorder
+    row.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', row.dataset.idx); row.style.opacity = '.4'; });
+    row.addEventListener('dragend',   () => row.style.opacity = '');
+    row.addEventListener('dragover',  e => { e.preventDefault(); row.style.background = 'var(--border)'; });
+    row.addEventListener('dragleave', () => row.style.background = '');
+    row.addEventListener('drop', e => {
+      e.preventDefault(); row.style.background = '';
+      const from = +e.dataTransfer.getData('text/plain'), to = +row.dataset.idx;
+      if (from === to) return;
+      const item = _nopWorkOrder.splice(from, 1)[0];
+      _nopWorkOrder.splice(to, 0, item);
+      renderNopList(false);
+    });
+    _nopList.appendChild(row);
+  });
+}
+
+document.getElementById('nopApply').addEventListener('click', () => {
+  if (_nopLevelIdx < 0) return;
+  treeLevels[_nopLevelIdx].order = _nopWorkOrder.slice();
+  closeNodeOrderPopup();
+  renderLevelChips();
+  buildTree();
+});
+
+document.getElementById('nopReset').addEventListener('click', () => {
+  if (_nopLevelIdx < 0) return;
+  delete treeLevels[_nopLevelIdx].order;
+  closeNodeOrderPopup();
+  renderLevelChips();
+  buildTree();
+});
 
 // ── Colors: hue sector per subtree ──────────────────────
 function _colorTree(node, hStart, hRange) {
@@ -1759,8 +1975,7 @@ function renderTreeLegend() {
 
 // ── Rebuild on feature update ────────────────────────────
 function rebuildTreeIfActive() {
-  if (treeLevels.length > 0 && treeRoot) buildTree();
-  else if (treeLevels.length > 0) treePopulatePicker();
+  if (treeLevels.length > 0) buildTree();
 }
 
 </script>
