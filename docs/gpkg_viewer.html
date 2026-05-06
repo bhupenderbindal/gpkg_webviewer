@@ -429,6 +429,8 @@ html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"
       </div>
       <div style="display:flex;gap:3px;margin-left:auto;align-items:center">
         <button class="btn-sm" id="treeFitBtn" title="Fit to view" style="display:none">⊡ Fit</button>
+        <button class="btn-sm" id="treeDownSvgBtn" title="Download tree as SVG" style="display:none">⬇ SVG</button>
+        <button class="btn-sm" id="treeDownPngBtn" title="Download tree as PNG" style="display:none">⬇ PNG</button>
         <button class="btn-sm danger" id="treeClearBtn" style="display:none">✕ Clear</button>
       </div>
     </div>
@@ -737,6 +739,8 @@ async function loadLayer(layerName) {
   document.getElementById('treeEmptyMsg').style.display='flex';
   document.getElementById('treeLegendBar').style.display='none';
   document.getElementById('treeFitBtn').style.display='none';
+  document.getElementById('treeDownSvgBtn').style.display='none';
+  document.getElementById('treeDownPngBtn').style.display='none';
   document.getElementById('treeClearBtn').style.display='none';
   await applyFilters();
 }
@@ -1448,6 +1452,8 @@ function renderLevelChips() {
   const has = treeLevels.length > 0;
   document.getElementById('treeClearBtn').style.display = has ? 'inline-block' : 'none';
   document.getElementById('treeFitBtn').style.display = has ? 'inline-block' : 'none';
+  document.getElementById('treeDownSvgBtn').style.display = has ? 'inline-block' : 'none';
+  document.getElementById('treeDownPngBtn').style.display = has ? 'inline-block' : 'none';
 }
 
 // ── Build data tree ──────────────────────────────────────
@@ -2010,6 +2016,73 @@ function S(tag, attrs) {
   Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
   return el;
 }
+
+// ── Tree download ────────────────────────────────────────
+function treeDownloadSVG() {
+  const svg = document.getElementById('treeSvg');
+  if (!svg || !treeRoot) return;
+
+  // Clone and embed the JetBrains Mono font so the SVG is self-contained
+  const clone = svg.cloneNode(true);
+  const tw = svg.getAttribute('data-tw') || svg.getAttribute('width') || '600';
+  const th = svg.getAttribute('data-th') || svg.getAttribute('height') || '400';
+  clone.setAttribute('viewBox', `0 0 ${tw} ${th}`);
+  clone.setAttribute('width', tw);
+  clone.setAttribute('height', th);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+  const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+  style.textContent = `@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');`;
+  clone.insertBefore(style, clone.firstChild);
+
+  const blob = new Blob([clone.outerHTML], { type: 'image/svg+xml' });
+  const name = (currentLayer || 'tree') + '_colortree.svg';
+  triggerDownload(blob, name);
+}
+
+async function treeDownloadPNG() {
+  const svg = document.getElementById('treeSvg');
+  if (!svg || !treeRoot) return;
+
+  const tw = +(svg.getAttribute('data-tw') || svg.getAttribute('width') || 600);
+  const th = +(svg.getAttribute('data-th') || svg.getAttribute('height') || 400);
+  const scale = Math.min(4, Math.max(2, 3200 / Math.max(tw, th))); // target ~3000px wide
+
+  const clone = svg.cloneNode(true);
+  clone.setAttribute('viewBox', `0 0 ${tw} ${th}`);
+  clone.setAttribute('width', tw * scale);
+  clone.setAttribute('height', th * scale);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+  const svgBlob = new Blob([clone.outerHTML], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(svgBlob);
+
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width  = tw * scale;
+    canvas.height = th * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob(blob => {
+      triggerDownload(blob, (currentLayer || 'tree') + '_colortree.png');
+    }, 'image/png');
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); alert('PNG render failed.'); };
+  img.src = url;
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('treeDownSvgBtn').addEventListener('click', treeDownloadSVG);
+document.getElementById('treeDownPngBtn').addEventListener('click', treeDownloadPNG);
 
 // ── Apply colors to Leaflet map ──────────────────────────
 function applyTreeColoring() {
