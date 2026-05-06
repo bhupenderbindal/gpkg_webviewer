@@ -399,6 +399,8 @@ html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"
         <input type="range" class="op-slider" id="fillOpacity" min="0" max="100" value="20">
         <span class="op-val" id="opVal">20%</span>
       </div>
+      <div class="top-bar-sep"></div>
+      <button class="btn-sm" id="exportBtn" title="Export currently shown features" style="display:none">⬇ Export</button>
     </div>
     <div id="map"></div>
 
@@ -406,7 +408,7 @@ html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"
     <div class="dist-panel hidden" id="distPanel">
       <div class="dist-resize" id="distResize"></div>
       <div class="dist-panel-head">
-        <span class="dist-panel-title">Distribution</span>
+        <span class="dist-panel-title">Distribution</span><span id="distNodeLabel" style="font-size:.58rem;color:var(--accent2);margin-left:5px;display:none"></span>
         <div style="display:flex;gap:4px;align-items:center;margin-left:6px">
           <button class="btn-sm" id="plotTypeBox" title="Boxplot">Box</button>
           <button class="btn-sm" id="plotTypeViolin" title="Violin">Violin</button>
@@ -728,7 +730,7 @@ async function loadLayer(layerName) {
   document.getElementById('colSection').style.display='flex';
   setDebug(dbg);
   // Reset tree state for new layer
-  treeLevels=[]; treeRoot=null; featureColorMap.clear();
+  treeLevels=[]; treeRoot=null; featureColorMap.clear(); activeTreeNode=null;
   renderLevelChips();
   treePopulatePicker();
   document.getElementById('treeSvg').innerHTML='';
@@ -888,7 +890,7 @@ function _applyFilters() {
   const sql=`SELECT "${geomColumn}" AS _gpkg_geom_, * FROM "${currentLayer}" ${where}`;
   let res; try{res=db.exec(sql);}catch(e){throw new Error(e.message+'\n'+sql);}
 
-  if(!res.length||!res[0].values.length){clearMap();hideOverlay();document.getElementById('resultInfo').innerHTML='<strong>0</strong> features';currentFeatures=[];rebuildTreeIfActive();return;}
+  if(!res.length||!res[0].values.length){clearMap();hideOverlay();document.getElementById('resultInfo').innerHTML='<strong>0</strong> features';currentFeatures=[];document.getElementById('exportBtn').style.display='none';rebuildTreeIfActive();return;}
 
   const cols=res[0].columns; const geomIdx=cols.indexOf('_gpkg_geom_');
   let failed=0; const features=[];
@@ -908,9 +910,54 @@ function _applyFilters() {
   currentFeatures=features;
   renderGeoJSON({type:'FeatureCollection',features});
   document.getElementById('resultInfo').innerHTML=`<strong>${features.length}</strong> features${failed?` (${failed} skipped)`:''}`;
+  document.getElementById('exportBtn').style.display='inline-block';
   hideOverlay();
   if(distCols.size>0) renderDistribution();
   rebuildTreeIfActive();
+}
+
+/* ── Export features ─────────────────────────────────────── */
+document.getElementById('exportBtn').addEventListener('click', exportGeoJSON);
+
+async function exportGeoJSON() {
+  if (!currentFeatures.length) return;
+  const src = activeTreeNode
+    ? activeTreeNode.featureIndices.map(i => currentFeatures[i])
+    : currentFeatures;
+  const fc = {
+    type: 'FeatureCollection',
+    features: src.map(f => ({
+      type: 'Feature',
+      geometry: f.geometry,
+      properties: f.properties
+    }))
+  };
+  const json = JSON.stringify(fc);
+  const blob = new Blob([json], { type: 'application/geo+json' });
+  const defaultName = (currentLayer || 'export') + '_filtered.geojson';
+
+  if (window.showSaveFilePicker) {
+    try {
+      const fh = await window.showSaveFilePicker({
+        suggestedName: defaultName,
+        types: [{ description: 'GeoJSON', accept: { 'application/geo+json': ['.geojson', '.json'] } }]
+      });
+      const w = await fh.createWritable();
+      await w.write(blob);
+      await w.close();
+      setStatus(`Exported ${src.length} features → ${fh.name}`, true);
+    } catch (e) {
+      if (e.name !== 'AbortError') alert('Export failed: ' + e.message);
+    }
+  } else {
+    // Fallback: trigger download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = defaultName;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus(`Exported ${src.length} features`, true);
+  }
 }
 
 /* ── Reproject ────────────────────────────────────────────── */
@@ -1007,7 +1054,10 @@ function renderGeoJSON(fc){
    DISTRIBUTION PLOTS — pure Canvas, no external lib
    ══════════════════════════════════════════════════════════════ */
 function getNumericValues(colName) {
-  return currentFeatures
+  const src = activeTreeNode
+    ? activeTreeNode.featureIndices.map(i => currentFeatures[i])
+    : currentFeatures;
+  return src
     .map(f => f.properties[colName])
     .filter(v => v !== null && v !== undefined && !isNaN(Number(v)))
     .map(Number)
@@ -1044,7 +1094,18 @@ function kernelDensity(sorted, bandwidth, pts) {
   });
 }
 
+function updateDistNodeLabel() {
+  const el = document.getElementById('distNodeLabel');
+  if (activeTreeNode && activeTreeNode !== treeRoot) {
+    el.textContent = `· ${escHtml(String(activeTreeNode.value))}  n=${activeTreeNode.featureIndices.length}`;
+    el.style.display = 'inline';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
 function renderDistribution() {
+  updateDistNodeLabel();
   const body = document.getElementById('distBody');
   body.innerHTML = '';
   if (!currentFeatures.length || !distCols.size) return;
@@ -1225,6 +1286,7 @@ function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 let treeLevels = [];
 let treeRoot   = null;
 let featureColorMap = new Map();
+let activeTreeNode = null; // node whose features are shown in dist plots
 const TREE_MAX_VALS = 40;
 let treeOrientation = 'H'; // 'H' = left→right, 'V' = top→down
 
@@ -1401,6 +1463,7 @@ function buildTree() {
     return;
   }
   featureColorMap.clear();
+  activeTreeNode = null;
 
   function makeNode(indices, depth, value) {
     const colName = depth < treeLevels.length ? treeLevels[depth].colName : null;
@@ -1750,9 +1813,16 @@ function drawDendrogram() {
         g.style.cursor = 'pointer';
         g.addEventListener('click', e => {
           e.stopPropagation(); hideTreeTip();
-          node.collapsed = !node.collapsed;
+          if (activeTreeNode === node) {
+            activeTreeNode = null;
+            node.collapsed = !node.collapsed;
+          } else {
+            activeTreeNode = node.collapsed ? node : null;
+            node.collapsed = !node.collapsed;
+          }
           _colorTree(treeRoot, 0, 1); featureColorMap.clear(); _buildColorMap(treeRoot);
-          drawDendrogram(); applyTreeColoring(); renderTreeLegend();
+          drawDendrogramKeepView(); applyTreeColoring(); renderTreeLegend();
+          if (distCols.size) renderDistribution();
         });
       }
       nodeG.appendChild(g);
@@ -1890,36 +1960,48 @@ function drawDendrogram() {
       g.addEventListener('mouseleave', () => { 
         circle.setAttribute('opacity', isLeaf ? 0.93 : 0.82); hideTreeTip(); 
       });
-      // works for leaf nodes too
-      // if (node.children.length > 0) {
-        g.style.cursor = 'pointer';
+      g.style.cursor = 'pointer';
         g.addEventListener('click', e => {
           e.stopPropagation(); hideTreeTip();
+          // Toggle activeTreeNode: click same node again → deselect (show all)
+          if (activeTreeNode === node) {
+            activeTreeNode = null;
+            _colorTree(treeRoot, 0, 1); featureColorMap.clear(); _buildColorMap(treeRoot);
+            drawDendrogramKeepView(); applyTreeColoring(); renderTreeLegend();
+            if (distCols.size) renderDistribution();
+            return;
+          }
           node.collapsed = !node.collapsed;
           if (!node.collapsed){
+            activeTreeNode = null;
             _colorTree(treeRoot, 0, 1); featureColorMap.clear(); _buildColorMap(treeRoot);
-            drawDendrogram(); applyTreeColoring(); renderTreeLegend();
-          } 
-          else{
+            drawDendrogramKeepView(); applyTreeColoring(); renderTreeLegend();
+          } else {
+            activeTreeNode = node;
             const hi = new Set(node.featureIndices);
             geojsonLayer.eachLayer(layer => {
-            const idx = layer.options._featureIdx;
-            if (layer.setStyle) layer.setStyle(hi.has(idx)
-              ? { color: '#ff0000', weight: 2.5, fillOpacity: Math.min(1, geoFillOpacity + 0.35) }
-              : { opacity: 0.08, fillOpacity: 0.02 });
+              const idx = layer.options._featureIdx;
+              if (layer.setStyle) layer.setStyle(hi.has(idx)
+                ? { color: '#ff0000', weight: 2.5, fillOpacity: Math.min(1, geoFillOpacity + 0.35) }
+                : { opacity: 0.08, fillOpacity: 0.02 });
             });
-            drawDendrogram();
-            
-
+            drawDendrogramKeepView();
           }
-
+          if (distCols.size) renderDistribution();
         });
-      // }
       nodeG.appendChild(g);
       if (!node.collapsed) node.children.forEach(c => draw(c, node));
     }
     draw(treeRoot, null);
   }
+}
+
+// ── Draw keeping current viewport ───────────────────────
+function drawDendrogramKeepView() {
+  const saved = { ...treeVB };
+  drawDendrogram();
+  treeVB = saved;
+  document.getElementById('treeSvg').setAttribute('viewBox', `${saved.x} ${saved.y} ${saved.w} ${saved.h}`);
 }
 
 // ── SVG element factory ──────────────────────────────────
