@@ -1871,9 +1871,9 @@ function drawDendrogram() {
       if (d > 0) {
         svg.appendChild(S('line', { x1: 0, y1: cy - colH * 0.5, x2: cW, y2: cy - colH * 0.5, stroke: T.grid, 'stroke-width': 1 }));
       }
-      const colLabel = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
+      const colLabel = (d < treeLevels.length ? treeLevels[d].colName : 'leaf').replace(/_/g, ' ');
       // Multiline wrap: break into chunks of ~14 chars at word boundaries
-      const words = colLabel.split(/(?=[_\-. ])|(?<=[_\-. ])/);
+      const words = colLabel.split(/(?=[\-. ])|(?<=[\-. ])/);
       const lines = [];
       let cur = '';
       for (const w of words) {
@@ -1885,7 +1885,7 @@ function drawDendrogram() {
       const totalH = lines.length * lineH;
       const startY = cy - totalH / 2 + lineH / 2;
       lines.forEach((line, li) => {
-        const t = S('text', { x: cW - LBL_PAD_R, y: startY + li * lineH, 'text-anchor': 'end', 'font-size': LBL_FONT_SZ, fill: T.hdr, 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
+        const t = S('text', { x: cW - LBL_PAD_R, y: startY + li * lineH, 'text-anchor': 'end', 'font-size': LBL_FONT_SZ, fill: '#000000', 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
         t.textContent = line;
         svg.appendChild(t);
       });
@@ -2005,9 +2005,9 @@ function drawDendrogram() {
     for (let d = 0; d < td; d++) {
       const cx = PAD.l + (d+1) * colW;
       // const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
-      const label = treeLevels[d].colName;
+      const label = treeLevels[d].colName.replace(/_/g, ' ');
       const charsPerLine = Math.max(8, Math.floor(colW / 5.5));
-      const words = label.split(/(?=[_\-. ])|(?<=[_\-. ])/);
+      const words = label.split(/(?=[\-. ])|(?<=[\-. ])/);
       const lines = [];
       let cur = '';
       for (const w of words) {
@@ -2018,7 +2018,7 @@ function drawDendrogram() {
       const totalH = lines.length * LBL_LINE_H;
       const startY = hdrH / 2 - totalH / 2  + LBL_LINE_H / 2;
       lines.forEach((line, li) => {
-        const t = S('text', { x: cx, y: startY + li * LBL_LINE_H, 'text-anchor': 'middle', 'font-size': LBL_FONT_SZ_H, fill: T.hdr, 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
+        const t = S('text', { x: cx, y: startY + li * LBL_LINE_H, 'text-anchor': 'middle', 'font-size': LBL_FONT_SZ_H, fill: '#000000', 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
         t.textContent = line;
         svg.appendChild(t);
       });
