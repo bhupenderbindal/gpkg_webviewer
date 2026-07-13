@@ -24,7 +24,7 @@
   --danger:  #f04f30;
   --sz: 11px;
   /* SVG tree colors (theme-aware) */
-  --svg-bg:    #0d0f12;
+  --svg-bg:    #ffffff;
   --svg-grid:  #191e28;
   --svg-hdr:   #2a3445;
   --svg-edge:  #1e2530;
@@ -47,7 +47,7 @@ html[data-theme="light"]:root {
   --muted:   #7a8898;
   --danger:  #d0341a;
   --sz: 11px;
-  --svg-bg:    #f2f4f7;
+  --svg-bg:    #ffffff;
   --svg-grid:  #e0e4ec;
   --svg-hdr:   #a0aab8;
   --svg-edge:  #d8dce8;
@@ -266,6 +266,27 @@ input[type=range].op-slider{width:60px;accent-color:var(--accent);cursor:pointer
 .tli-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tli-n{margin-left:auto;flex-shrink:0;color:#2b3140}
 
+/* Mapillary token input */
+.mly-token-row{display:flex;gap:3px;align-items:center;flex-shrink:0}
+.mly-token-row input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:inherit;font-size:.62rem;padding:2px 5px;border-radius:2px;outline:none;height:20px}
+.mly-token-row input:focus{border-color:var(--accent2)}
+.mly-token-row input::placeholder{color:var(--muted)}
+
+/* Streetview floating panel */
+.sv-panel{position:absolute;bottom:36px;left:8px;z-index:1200;width:280px;background:var(--panel);border:1px solid var(--border2);border-radius:4px;box-shadow:0 6px 20px rgba(0,0,0,.55);display:none;flex-direction:column;overflow:hidden;font-family:'JetBrains Mono',monospace;font-size:.62rem}
+.sv-panel.open{display:flex}
+.sv-head{display:flex;align-items:center;gap:5px;padding:4px 7px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sv-title{flex:1;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.sv-close{cursor:pointer;color:var(--muted);font-size:.85rem;padding:0 2px;transition:color .12s}
+.sv-close:hover{color:var(--danger)}
+.sv-img-wrap{position:relative;width:100%;aspect-ratio:16/9;background:var(--panel2);flex-shrink:0;overflow:hidden}
+.sv-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.sv-spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;color:var(--muted)}
+.sv-meta{padding:4px 7px;color:var(--muted);font-size:.58rem;line-height:1.6;flex-shrink:0}
+.sv-meta a{color:var(--accent2);text-decoration:none}
+.sv-meta a:hover{text-decoration:underline}
+.sv-none{padding:10px 7px;color:var(--muted);font-size:.62rem;text-align:center}
+
 /* Theme transition */
 *, *::before, *::after { transition: background-color .18s, border-color .18s, color .1s; }
 /* but NOT SVG children (too slow) */
@@ -356,6 +377,13 @@ html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"
         <div class="col-list" id="colList"></div>
       </div>
       <div id="debugInfo" class="debug-info" style="display:none"></div>
+      <div id="mlySection" style="display:none;flex-shrink:0">
+        <div class="section-title">Mapillary</div>
+        <div class="mly-token-row">
+          <input type="password" id="mlyToken" placeholder="Client token…" autocomplete="off" title="Paste your Mapillary client access token">
+          <button class="btn-sm" id="mlyTokenSave">Save</button>
+        </div>
+      </div>
     </div>
     <div class="resize-handle-v" id="rHandleV1"></div>
   </div>
@@ -403,6 +431,18 @@ html[data-theme="light"] .leaflet-popup-content-wrapper, html[data-theme="light"
       <button class="btn-sm" id="exportBtn" title="Export currently shown features" style="display:none">⬇ Export</button>
     </div>
     <div id="map"></div>
+
+    <!-- Streetview panel -->
+    <div class="sv-panel" id="svPanel">
+      <div class="sv-head">
+        <span class="sv-title">Street View</span>
+        <span id="svClose" class="sv-close">×</span>
+      </div>
+      <div class="sv-img-wrap" id="svImgWrap">
+        <div class="sv-spinner" id="svSpinner">Searching…</div>
+      </div>
+      <div class="sv-meta" id="svMeta"></div>
+    </div>
 
     <!-- Distribution panel -->
     <div class="dist-panel hidden" id="distPanel">
@@ -678,6 +718,7 @@ async function loadFile(file) {
     populateLayerSelect(layers);
     document.getElementById('noDataMsg').style.display='none';
     document.getElementById('layerSection').style.display='block';
+    showMlySection();
     setStatus(file.name+' — '+layers.length+' layer(s)', true);
     await loadLayer(layers[0]);
   } catch(e) { hideOverlay(); alert('Error: '+e.message); console.error(e); }
@@ -1278,6 +1319,87 @@ function escAttr(s){return String(s).replace(/[^a-zA-Z0-9_]/g,'_');}
 function delay(ms){return new Promise(r=>setTimeout(r,ms));}
 
 /* ══════════════════════════════════════════════════════════════
+   MAPILLARY STREET VIEW
+   ══════════════════════════════════════════════════════════════ */
+const MLY_SEARCH_RADIUS = 5; // metres
+let mlyToken = localStorage.getItem('mlyToken') || '';
+
+// Restore saved token
+if (mlyToken) document.getElementById('mlyToken').value = mlyToken;
+
+// Show Mapillary section once a file is loaded
+function showMlySection() {
+  document.getElementById('mlySection').style.display = 'block';
+}
+
+document.getElementById('mlyTokenSave').addEventListener('click', () => {
+  mlyToken = document.getElementById('mlyToken').value.trim();
+  localStorage.setItem('mlyToken', mlyToken);
+  setStatus('Mapillary token saved', true);
+});
+
+// Close panel
+document.getElementById('svClose').addEventListener('click', () => {
+  document.getElementById('svPanel').classList.remove('open');
+});
+
+// Map click → query Mapillary
+map.on('click', async e => {
+  if (!mlyToken) return;
+  const { lat, lng } = e.latlng;
+  openSvPanel();
+  await fetchMapillaryImage(lat, lng);
+});
+
+function openSvPanel() {
+  const panel = document.getElementById('svPanel');
+  const wrap  = document.getElementById('svImgWrap');
+  const meta  = document.getElementById('svMeta');
+  // Clear previous content
+  wrap.innerHTML = '<div class="sv-spinner" id="svSpinner">Searching…</div>';
+  meta.innerHTML = '';
+  panel.classList.add('open');
+}
+
+async function fetchMapillaryImage(lat, lng) {
+  const wrap = document.getElementById('svImgWrap');
+  const meta = document.getElementById('svMeta');
+  try {
+    // Mapillary v4 — find nearest image within radius
+    const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(mlyToken)}`
+      + `&fields=id,thumb_1024_url,captured_at,compass_angle,sequence`
+      + `&bbox=${lng - 0.0005},${lat - 0.0005},${lng + 0.0005},${lat + 0.0005}`
+      + `&limit=1`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+    const data = await res.json();
+
+    if (!data.data || data.data.length === 0) {
+      wrap.innerHTML = '<div class="sv-none">No street-level imagery found nearby.</div>';
+      return;
+    }
+
+    const img = data.data[0];
+    const date = img.captured_at ? new Date(img.captured_at).toLocaleDateString() : '—';
+    const angle = img.compass_angle != null ? Math.round(img.compass_angle) + '°' : '—';
+    const mlyLink = `https://www.mapillary.com/app/?pKey=${img.id}`;
+
+    wrap.innerHTML = `<img src="${escHtml(img.thumb_1024_url)}" alt="Street view" loading="lazy"
+      onerror="this.parentNode.innerHTML='<div class=\\'sv-none\\'>Image failed to load.</div>'">`;
+    meta.innerHTML =
+      `<span>Date: ${escHtml(date)} · Bearing: ${escHtml(angle)}</span><br>` +
+      `<a href="${escHtml(mlyLink)}" target="_blank" rel="noopener">Open 360° on Mapillary ↗</a>`;
+
+  } catch (e) {
+    wrap.innerHTML = `<div class="sv-none">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
    INTERACTIVE SVG DENDROGRAM
    Left→right layout: root left, leaves right
    Bezier curved edges colored by branch hue sector
@@ -1851,7 +1973,7 @@ function drawDendrogram() {
       for (const w of words) { if (cur.length > 0 && (cur+w).length > charsPerLine) { cnt++; cur=w; } else cur=(cur?cur+'_':'')+w; }
       return cnt;
     }));
-    const hdrHPre = Math.max(22, maxLinesPre * LBL_LINE_H_PRE + 6);
+    const hdrHPre = Math.max(70, maxLinesPre * LBL_LINE_H_PRE + 6); // 70 to keep text above dendogram
 
     const cW = PAD.l + td * colW + PAD.r;
     const cH = hdrHPre + nL * rowH + PAD.b;
@@ -1877,12 +1999,11 @@ function drawDendrogram() {
       for (const w of words) { if ((cur+w).length > Math.floor(colW/5.5) && cur.length > 0) { cnt++; cur=w; } else cur+=w; }
       return cnt;
     }));
-    const hdrH = Math.max(22, maxLines * LBL_LINE_H + 6);
+    const hdrH = Math.max(70, maxLines * LBL_LINE_H + 6);
 
     // column name for each level as heading on svg-tree
     for (let d = 0; d < td; d++) {
       const cx = PAD.l + (d+1) * colW;
-      if (d < td) svg.appendChild(S('line', { x1: cx - colW * 0.5, y1: 0, x2: cx - colW * 0.5, y2: cH, stroke: T.grid, 'stroke-width': 1 }));
       // const label = d < treeLevels.length ? treeLevels[d].colName : 'leaf';
       const label = treeLevels[d].colName;
       const charsPerLine = Math.max(8, Math.floor(colW / 5.5));
@@ -1895,7 +2016,7 @@ function drawDendrogram() {
       }
       if (cur.trim()) lines.push(cur.trim());
       const totalH = lines.length * LBL_LINE_H;
-      const startY = hdrH / 2 - totalH / 2 + LBL_LINE_H / 2;
+      const startY = hdrH / 2 - totalH / 2  + LBL_LINE_H / 2;
       lines.forEach((line, li) => {
         const t = S('text', { x: cx, y: startY + li * LBL_LINE_H, 'text-anchor': 'middle', 'font-size': LBL_FONT_SZ_H, fill: T.hdr, 'dominant-baseline': 'central', 'font-family': 'JetBrains Mono,monospace' });
         t.textContent = line;
@@ -1903,7 +2024,7 @@ function drawDendrogram() {
       });
     }
     // Horizontal separator under header
-    svg.appendChild(S('line', { x1: 0, y1: hdrH, x2: cW, y2: hdrH, stroke: T.grid, 'stroke-width': 1 }));
+    svg.appendChild(S('line', { x1: 0, y1: hdrH-PAD.b, x2: cW, y2: hdrH-PAD.b, stroke: T.grid, 'stroke-width': 1 }));
 
     const edgeG = S('g', {}); svg.appendChild(edgeG);
     const nodeG = S('g', {}); svg.appendChild(nodeG);
