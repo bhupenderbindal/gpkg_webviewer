@@ -1,1276 +1,2134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ZotGraph — semantic atlas of a Zotero library</title>
-<style>
-  :root{
-    --ground:#e7e9ee; --panel:#fff; --ink:#14161d; --ink-2:#5b6270;
-    --rule:#d3d8e1; --accent:#a4343a; --accent-soft:#f3e3e4;
-    --ui:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
-    --stage-bg:#0b0d13;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
-  body{background:var(--ground);color:var(--ink);font-family:var(--ui);
-       display:grid;grid-template-columns:290px 1fr;grid-template-rows:46px 1fr;
-       grid-template-areas:"brand top" "side stage";overflow:hidden}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ZotGraph — semantic atlas of a Zotero library</title>
+    <style>
+      :root {
+        --ground: #e7e9ee;
+        --panel: #fff;
+        --ink: #14161d;
+        --ink-2: #5b6270;
+        --rule: #d3d8e1;
+        --accent: #a4343a;
+        --accent-soft: #f3e3e4;
+        --ui: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono:
+          ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        --stage-bg: #0b0d13;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--ui);
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        grid-template-rows: 46px 1fr;
+        grid-template-areas: "brand top" "side stage";
+        overflow: hidden;
+      }
 
-  .micro{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
-         text-transform:uppercase;color:var(--ink-2)}
+      .micro {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+      }
 
-  #brand{grid-area:brand;display:flex;align-items:center;gap:9px;padding:0 16px;
-         border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);background:var(--panel)}
-  #brand b{font-size:14px;font-weight:650;letter-spacing:-.01em}
-  #brand span{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);letter-spacing:.1em}
+      #brand {
+        grid-area: brand;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 0 16px;
+        border-right: 1px solid var(--rule);
+        border-bottom: 1px solid var(--rule);
+        background: var(--panel);
+      }
+      #brand b {
+        font-size: 14px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      #brand span {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--ink-2);
+        letter-spacing: 0.1em;
+      }
 
-  #top{grid-area:top;display:flex;align-items:center;gap:14px;padding:0 16px;
-       border-bottom:1px solid var(--rule);background:var(--panel);position:relative}
-  #status{font-size:12.5px;color:var(--ink-2);flex:1;min-width:0;
-          overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  #status.busy{color:var(--ink)}
-  #meta,#gstats{font-family:var(--mono);font-size:10.5px;color:var(--ink-2);white-space:nowrap}
-  #barwrap{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:transparent}
-  #bar{height:2px;width:0;background:var(--accent);transition:width .12s linear}
+      #top {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--rule);
+        background: var(--panel);
+        position: relative;
+      }
+      #status {
+        font-size: 12.5px;
+        color: var(--ink-2);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #status.busy {
+        color: var(--ink);
+      }
+      #meta,
+      #gstats {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      #barwrap {
+        position: absolute;
+        left: 0;
+        bottom: -1px;
+        height: 2px;
+        width: 100%;
+        background: transparent;
+      }
+      #bar {
+        height: 2px;
+        width: 0;
+        background: var(--accent);
+        transition: width 0.12s linear;
+      }
 
-  #side{grid-area:side;background:var(--panel);border-right:1px solid var(--rule);
-        overflow-y:auto;padding:16px}
-  #stage{grid-area:stage;position:relative;overflow:hidden;background:var(--stage-bg)}
-  canvas{display:block;cursor:grab}
+      #side {
+        grid-area: side;
+        background: var(--panel);
+        border-right: 1px solid var(--rule);
+        overflow-y: auto;
+        padding: 16px;
+      }
+      #stage {
+        grid-area: stage;
+        position: relative;
+        overflow: hidden;
+        background: var(--stage-bg);
+      }
+      canvas {
+        display: block;
+        cursor: grab;
+      }
 
-  #dropzone{position:absolute;inset:0;display:flex;flex-direction:column;
-            align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px;
-            color:#e6e9f0}
-  #dropzone .micro{color:#8890a4}
-  #dropzone h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:0;max-width:20ch;line-height:1.2;color:#f2f4f8}
-  #dropzone p{max-width:46ch;font-size:13.5px;line-height:1.6;color:#9aa2b5;margin:0}
-  #dropzone code{font-family:var(--mono);font-size:12px;background:#1a1d27;color:#dfe3ec;
-                 padding:2px 6px;border:1px solid #333849}
-  .file{display:inline-block;border:1px solid var(--ink);padding:9px 18px;font-size:13px;
-        cursor:pointer;background:var(--ink);color:#fff}
-  .file input{display:none}
+      #dropzone {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        text-align: center;
+        padding: 32px;
+        color: #e6e9f0;
+      }
+      #dropzone .micro {
+        color: #8890a4;
+      }
+      #dropzone h1 {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        margin: 0;
+        max-width: 20ch;
+        line-height: 1.2;
+        color: #f2f4f8;
+      }
+      #dropzone p {
+        max-width: 46ch;
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: #9aa2b5;
+        margin: 0;
+      }
+      #dropzone code {
+        font-family: var(--mono);
+        font-size: 12px;
+        background: #1a1d27;
+        color: #dfe3ec;
+        padding: 2px 6px;
+        border: 1px solid #333849;
+      }
+      .file {
+        display: inline-block;
+        border: 1px solid var(--ink);
+        padding: 9px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        background: var(--ink);
+        color: #fff;
+      }
+      .file input {
+        display: none;
+      }
 
-  .grp{margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--rule)}
-  .grp:last-child{border-bottom:0}
-  .grp>.micro{margin-bottom:10px}
-  label.row{display:flex;justify-content:space-between;align-items:baseline;
-            font-size:12.5px;margin:11px 0 4px}
-  label.row var{font-family:var(--mono);font-style:normal;font-size:11px;color:var(--accent)}
-  input[type=range]{width:100%;accent-color:var(--accent);margin:0}
-  .hint{font-size:11px;line-height:1.5;color:var(--ink-2);margin:5px 0 0}
-  .check{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:9px 0}
-  .check input{accent-color:var(--accent)}
-  select,input[type=text]{width:100%;font-family:var(--ui);font-size:12.5px;padding:7px 8px;
-        border:1px solid var(--rule);background:var(--panel);color:var(--ink)}
-  button.act{width:100%;padding:9px;font-size:12.5px;font-family:var(--ui);cursor:pointer;
-             border:1px solid var(--ink);background:var(--ink);color:#fff;margin-top:10px}
-  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+      .grp {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--rule);
+      }
+      .grp:last-child {
+        border-bottom: 0;
+      }
+      .grp > .micro {
+        margin-bottom: 10px;
+      }
+      label.row {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12.5px;
+        margin: 11px 0 4px;
+      }
+      label.row var {
+        font-family: var(--mono);
+        font-style: normal;
+        font-size: 11px;
+        color: var(--accent);
+      }
+      input[type="range"] {
+        width: 100%;
+        accent-color: var(--accent);
+        margin: 0;
+      }
+      .hint {
+        font-size: 11px;
+        line-height: 1.5;
+        color: var(--ink-2);
+        margin: 5px 0 0;
+      }
+      .check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        margin: 9px 0;
+      }
+      .check input {
+        accent-color: var(--accent);
+      }
+      select,
+      input[type="text"] {
+        width: 100%;
+        font-family: var(--ui);
+        font-size: 12.5px;
+        padding: 7px 8px;
+        border: 1px solid var(--rule);
+        background: var(--panel);
+        color: var(--ink);
+      }
+      button.act {
+        width: 100%;
+        padding: 9px;
+        font-size: 12.5px;
+        font-family: var(--ui);
+        cursor: pointer;
+        border: 1px solid var(--ink);
+        background: var(--ink);
+        color: #fff;
+        margin-top: 10px;
+      }
+      button.ghost {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid var(--rule);
+      }
 
-  #legend{display:flex;flex-direction:column;gap:1px}
-  .leg{display:flex;align-items:center;gap:8px;width:100%;text-align:left;cursor:pointer;
-       background:transparent;border:0;padding:5px 6px;font-family:var(--ui);font-size:12px;color:var(--ink)}
-  .leg:hover{background:var(--ground)}
-  .leg.on{background:var(--accent-soft)}
-  .sw{width:9px;height:9px;flex:0 0 9px;border-radius:50%}
-  .lt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .ln{font-family:var(--mono);font-size:10px;color:var(--ink-2)}
+      #legend {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .leg {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        background: transparent;
+        border: 0;
+        padding: 5px 6px;
+        font-family: var(--ui);
+        font-size: 12px;
+        color: var(--ink);
+      }
+      .leg:hover {
+        background: var(--ground);
+      }
+      .leg.on {
+        background: var(--accent-soft);
+      }
+      .sw {
+        width: 9px;
+        height: 9px;
+        flex: 0 0 9px;
+        border-radius: 50%;
+      }
+      .lt {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .ln {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-2);
+      }
 
-  #tip{position:absolute;display:none;pointer-events:none;max-width:320px;
-       background:var(--ink);color:#fff;padding:8px 10px;font-size:12px;line-height:1.35;z-index:5}
-  #tip .sub{display:block;font-family:var(--mono);font-size:10px;opacity:.7;margin-top:4px}
+      #tip {
+        position: absolute;
+        display: none;
+        pointer-events: none;
+        max-width: 320px;
+        background: var(--ink);
+        color: #fff;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.35;
+        z-index: 5;
+      }
+      #tip .sub {
+        display: block;
+        font-family: var(--mono);
+        font-size: 10px;
+        opacity: 0.7;
+        margin-top: 4px;
+      }
 
-  #detail{position:absolute;top:14px;right:14px;width:330px;max-height:calc(100% - 28px);
-          overflow-y:auto;background:var(--panel);border:1px solid var(--rule);
-          padding:16px;display:none;box-shadow:0 6px 26px rgba(20,22,29,.10)}
-  #detail.open{display:block}
-  #detail h2{font-size:15px;font-weight:600;line-height:1.3;margin:7px 0 5px;letter-spacing:-.01em}
-  .byline{font-family:var(--mono);font-size:10.5px;color:var(--ink-2)}
-  .chips{display:flex;flex-wrap:wrap;gap:5px;margin:11px 0}
-  .chip{font-family:var(--mono);font-size:9.5px;padding:3px 7px;border:1px solid var(--rule);
-        color:var(--ink-2);border-left-width:3px}
-  .abs{font-size:12px;line-height:1.55;color:var(--ink-2);margin:10px 0}
-  .btn{display:block;text-align:center;text-decoration:none;padding:8px;font-size:12.5px;
-       background:var(--accent);color:#fff;margin:12px 0}
-  .mt{margin:14px 0 8px}
-  .nb{display:grid;grid-template-columns:44px 22px 1fr;gap:7px;align-items:center;width:100%;
-      background:transparent;border:0;padding:5px 2px;cursor:pointer;text-align:left;
-      font-family:var(--ui);font-size:11.5px;color:var(--ink)}
-  .nb:hover{background:var(--ground)}
-  .nbbar{height:4px;background:var(--ground);position:relative;overflow:hidden}
-  .nbbar i{position:absolute;left:0;top:0;height:100%}
-  .nbv{font-family:var(--mono);font-size:10px;color:var(--ink-2)}
-  .nbt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #detail {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 330px;
+        max-height: calc(100% - 28px);
+        overflow-y: auto;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        padding: 16px;
+        display: block;
+        box-shadow: 0 6px 26px rgba(20, 22, 29, 0.1);
+      }
+      #detail .empty {
+        font-size: 12.5px;
+        line-height: 1.6;
+        color: var(--ink-2);
+        margin: 7px 0 0;
+      }
+      #detail h2 {
+        font-size: 15px;
+        font-weight: 600;
+        line-height: 1.3;
+        margin: 7px 0 5px;
+        letter-spacing: -0.01em;
+      }
+      .byline {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-2);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 11px 0;
+      }
+      .chip {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        padding: 3px 7px;
+        border: 1px solid var(--rule);
+        color: var(--ink-2);
+        border-left-width: 3px;
+      }
+      .abs {
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--ink-2);
+        margin: 10px 0;
+      }
+      .btn {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        padding: 8px;
+        font-size: 12.5px;
+        background: var(--accent);
+        color: #fff;
+        margin: 12px 0;
+      }
+      .mt {
+        margin: 14px 0 8px;
+      }
+      .nb {
+        display: grid;
+        grid-template-columns: 44px 22px 1fr;
+        gap: 7px;
+        align-items: center;
+        width: 100%;
+        background: transparent;
+        border: 0;
+        padding: 5px 2px;
+        cursor: pointer;
+        text-align: left;
+        font-family: var(--ui);
+        font-size: 11.5px;
+        color: var(--ink);
+      }
+      .nb:hover {
+        background: var(--ground);
+      }
+      .nbbar {
+        height: 4px;
+        background: var(--ground);
+        position: relative;
+        overflow: hidden;
+      }
+      .nbbar i {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+      }
+      .nbv {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-2);
+      }
+      .nbt {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
-  #clearfocus{position:absolute;left:14px;top:14px;display:none;background:var(--panel);
-              border:1px solid var(--rule);padding:6px 12px;font-size:12px;cursor:pointer;
-              font-family:var(--ui)}
-  @media (prefers-reduced-motion:reduce){#bar{transition:none}}
-</style>
-</head>
-<body>
-<div id="brand"><b>ZotGraph</b><span>PROTOTYPE</span></div>
-<div id="top">
-  <div id="status">Loading…</div>
-  <div id="meta"></div>
-  <div id="gstats"></div>
-  <div id="barwrap"><div id="bar"></div></div>
-</div>
-
-<aside id="side">
-  <div id="controls" style="display:none">
-    <div class="grp">
-      <div class="micro">Find a paper</div>
-      <input type="text" id="search" placeholder="Type part of a title">
+      #clearfocus {
+        position: absolute;
+        left: 14px;
+        top: 14px;
+        display: none;
+        background: var(--panel);
+        border: 1px solid var(--rule);
+        padding: 6px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        font-family: var(--ui);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #bar {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="brand"><b>ZotGraph</b><span>PROTOTYPE</span></div>
+    <div id="top">
+      <div id="status">Loading…</div>
+      <div id="meta"></div>
+      <div id="gstats"></div>
+      <div id="barwrap"><div id="bar"></div></div>
     </div>
 
-    <div class="grp">
-      <div class="micro">Linking</div>
-      <label class="row">Neighbours per paper <var id="kv">10</var></label>
-      <input type="range" id="k" min="3" max="30" value="10" step="1">
-      <p class="hint">How many nearest papers each one may link to. Higher joins topics together; lower splinters them.</p>
-      <label class="row">Minimum similarity <var id="minsimv">0</var></label>
-      <input type="range" id="minsim" min="0" max="0.9" value="0" step="0.05">
-      <div class="check"><input type="checkbox" id="mutual"><label for="mutual">Require the link to be mutual</label></div>
-      <p class="hint">Mutual linking is stricter and tends to break real topics into fragments. Leave it off unless the map looks tangled.</p>
-    </div>
+    <aside id="side">
+      <div id="controls" style="display: none">
+        <div class="grp">
+          <div class="micro">Find a paper</div>
+          <input type="text" id="search" placeholder="Type part of a title" />
+        </div>
 
-    <div class="grp">
-      <div class="micro">Clustering</div>
-      <label class="row">Resolution <var id="resv">1</var></label>
-      <input type="range" id="res" min="0.3" max="2.5" value="1" step="0.1">
-      <p class="hint">Higher splits the library into more, smaller topics.</p>
-      <button class="act" id="apply">Rebuild the map</button>
-    </div>
+        <div class="grp">
+          <div class="micro">Linking</div>
+          <label class="row">Neighbours per paper <var id="kv">10</var></label>
+          <input type="range" id="k" min="3" max="70" value="10" step="1" />
+          <p class="hint">
+            How many nearest papers each one may link to. Higher joins topics
+            together; lower splinters them.
+          </p>
+          <label class="row"
+            >Minimum similarity <var id="minsimv">0</var></label
+          >
+          <input
+            type="range"
+            id="minsim"
+            min="0"
+            max="0.9"
+            value="0"
+            step="0.05"
+          />
+          <div class="check">
+            <input type="checkbox" id="mutual" /><label for="mutual"
+              >Require the link to be mutual</label
+            >
+          </div>
+          <p class="hint">
+            Mutual linking is stricter and tends to break real topics into
+            fragments. Leave it off unless the map looks tangled.
+          </p>
+        </div>
 
-    <div class="grp">
-      <div class="micro">Layout</div>
-      <label class="row">Spread <var id="spreadv">1</var></label>
-      <input type="range" id="spread" min="0.2" max="4" value="1" step="0.1">
-      <label class="row">Pull to centre <var id="gravityv">0.02</var></label>
-      <input type="range" id="gravity" min="0" max="0.12" value="0.02" step="0.005">
-      <div class="check"><input type="checkbox" id="edgetoggle" checked><label for="edgetoggle">Draw links</label></div>
-      <button class="act ghost" id="fit">Fit to window</button>
-    </div>
+        <div class="grp">
+          <div class="micro">Clustering</div>
+          <label class="row">Resolution <var id="resv">1</var></label>
+          <input
+            type="range"
+            id="res"
+            min="0.3"
+            max="2.5"
+            value="1"
+            step="0.1"
+          />
+          <p class="hint">
+            Higher splits the library into more, smaller topics.
+          </p>
+          <button class="act" id="apply">Rebuild the map</button>
+        </div>
 
-    <div class="grp">
-      <div class="micro">Comparison detail</div>
-      <select id="kdims">
-        <option value="768" selected>Full 768 dimensions</option>
-        <option value="384">384 — roughly twice as fast</option>
-        <option value="256">256 — fastest, coarser</option>
-      </select>
-      <p class="hint">Shortening the vectors speeds up the all-pairs comparison on large libraries, at some cost to accuracy.</p>
-    </div>
+        <div class="grp">
+          <div class="micro">Layout</div>
+          <label class="row">Spread <var id="spreadv">1</var></label>
+          <input
+            type="range"
+            id="spread"
+            min="0.2"
+            max="4"
+            value="1"
+            step="0.1"
+          />
+          <label class="row"
+            >Pull to centre <var id="gravityv">0.02</var></label
+          >
+          <input
+            type="range"
+            id="gravity"
+            min="0"
+            max="0.12"
+            value="0.02"
+            step="0.005"
+          />
+          <div class="check">
+            <input type="checkbox" id="edgetoggle" /><label
+              for="edgetoggle"
+              >Draw links</label
+            >
+          </div>
+          <button class="act ghost" id="fit">Fit to window</button>
+        </div>
 
-    <div class="grp">
-      <div class="micro">Topics</div>
-      <div id="legend"></div>
-    </div>
+        <div class="grp">
+          <div class="micro">Comparison detail</div>
+          <select id="kdims">
+            <option value="768" selected>Full 768 dimensions</option>
+            <option value="384">384 — roughly twice as fast</option>
+            <option value="256">256 — fastest, coarser</option>
+          </select>
+          <p class="hint">
+            Shortening the vectors speeds up the all-pairs comparison on large
+            libraries, at some cost to accuracy.
+          </p>
+        </div>
 
-    <div class="grp">
-      <button class="act ghost" id="export">Save layout as JSON</button>
-      <p class="hint">Positions and cluster assignments, keyed by Zotero item key — the handoff for the plugin build.</p>
-    </div>
-  </div>
-</aside>
+        <div class="grp">
+          <div class="micro">Topics</div>
+          <div id="legend"></div>
+        </div>
 
-<main id="stage">
-  <canvas id="cv"></canvas>
-  <div id="tip"></div>
-  <button id="clearfocus">Show the whole library</button>
-  <div id="detail"></div>
-  <div id="dropzone">
-    <div class="micro">Step two of three</div>
-    <h1>Drop your exported library here</h1>
-    <p>Run <code>zotseek_export.py</code> against <code>zotseek.sqlite</code>, then drop the resulting
-       <code>graph_input.json</code> anywhere on this window. Nothing is uploaded — the file is read
-       in this browser tab and stays on your machine.</p>
-    <label class="file">Choose graph_input.json<input type="file" id="file" accept=".json,application/json"></label>
-  </div>
-</main>
+        <div class="grp">
+          <button class="act ghost" id="export">Save layout as JSON</button>
+          <p class="hint">
+            Positions and cluster assignments, keyed by Zotero item key — the
+            handoff for the plugin build.
+          </p>
+        </div>
+      </div>
+    </aside>
 
-<script>/* graph_core.js — dependency-free graph construction for ZotSeek embeddings.
+    <main id="stage">
+      <canvas id="cv"></canvas>
+      <div id="tip"></div>
+      <button id="clearfocus">Show the whole library</button>
+      <div id="detail" style="display: none">
+        <div class="micro">Selected paper</div>
+        <p class="empty">
+          Click a paper on the map to see its details and nearest neighbours
+          here.
+        </p>
+      </div>
+      <div id="dropzone">
+        <div class="micro">Step two of three</div>
+        <h1>Drop your exported library here</h1>
+        <p>
+          Run <code>zotseek_export.py</code> against
+          <code>zotseek.sqlite</code>, then drop the resulting
+          <code>graph_input.json</code> anywhere on this window. Nothing is
+          uploaded — the file is read in this browser tab and stays on your
+          machine.
+        </p>
+        <label class="file"
+          >Choose graph_input.json<input
+            type="file"
+            id="file"
+            accept=".json,application/json"
+        /></label>
+      </div>
+    </main>
+
+    <script>
+      /* graph_core.js — dependency-free graph construction for ZotSeek embeddings.
    Plain script (no modules) so it works from file:// and in node via require-less eval. */
 
-(function (root) {
-  "use strict";
+      (function (root) {
+        "use strict";
 
-  /* ---------------------------------------------------------------- vectors */
+        /* ---------------------------------------------------------------- vectors */
 
-  function normalizeRows(flat, n, dims) {
-    for (let i = 0; i < n; i++) {
-      const b = i * dims;
-      let s = 0;
-      for (let d = 0; d < dims; d++) s += flat[b + d] * flat[b + d];
-      s = Math.sqrt(s);
-      if (s > 0) for (let d = 0; d < dims; d++) flat[b + d] /= s;
-    }
-    return flat;
-  }
+        function normalizeRows(flat, n, dims) {
+          for (let i = 0; i < n; i++) {
+            const b = i * dims;
+            let s = 0;
+            for (let d = 0; d < dims; d++) s += flat[b + d] * flat[b + d];
+            s = Math.sqrt(s);
+            if (s > 0) for (let d = 0; d < dims; d++) flat[b + d] /= s;
+          }
+          return flat;
+        }
 
-  /* Matryoshka slice: keep first `keep` dims, renormalize. */
-  function truncate(flat, n, dims, keep) {
-    if (keep >= dims) return { flat: flat, dims: dims };
-    const out = new Float32Array(n * keep);
-    for (let i = 0; i < n; i++) {
-      const src = i * dims, dst = i * keep;
-      for (let d = 0; d < keep; d++) out[dst + d] = flat[src + d];
-    }
-    normalizeRows(out, n, keep);
-    return { flat: out, dims: keep };
-  }
+        /* Matryoshka slice: keep first `keep` dims, renormalize. */
+        function truncate(flat, n, dims, keep) {
+          if (keep >= dims) return { flat: flat, dims: dims };
+          const out = new Float32Array(n * keep);
+          for (let i = 0; i < n; i++) {
+            const src = i * dims,
+              dst = i * keep;
+            for (let d = 0; d < keep; d++) out[dst + d] = flat[src + d];
+          }
+          normalizeRows(out, n, keep);
+          return { flat: out, dims: keep };
+        }
 
-  /* ------------------------------------------------------------------- kNN */
+        /* ------------------------------------------------------------------- kNN */
 
-  function insertNbr(base, j, s, K, idxArr, simArr) {
-    if (s <= simArr[base + K - 1]) return;
-    let p = K - 1;
-    while (p > 0 && simArr[base + p - 1] < s) {
-      simArr[base + p] = simArr[base + p - 1];
-      idxArr[base + p] = idxArr[base + p - 1];
-      p--;
-    }
-    simArr[base + p] = s;
-    idxArr[base + p] = j;
-  }
+        function insertNbr(base, j, s, K, idxArr, simArr) {
+          if (s <= simArr[base + K - 1]) return;
+          let p = K - 1;
+          while (p > 0 && simArr[base + p - 1] < s) {
+            simArr[base + p] = simArr[base + p - 1];
+            idxArr[base + p] = idxArr[base + p - 1];
+            p--;
+          }
+          simArr[base + p] = s;
+          idxArr[base + p] = j;
+        }
 
-  /* Brute-force exact kNN over unit vectors (cosine == dot).
+        /* Brute-force exact kNN over unit vectors (cosine == dot).
      Returns row-major nbr/sim of width K, sorted descending.
      `rowsPerSlice` lets a caller drive this incrementally to keep a UI alive. */
-  function makeKNNRunner(flat, n, dims, K) {
-    const nbr = new Int32Array(n * K).fill(-1);
-    const sim = new Float32Array(n * K).fill(-Infinity);
-    let i = 0;
-    return {
-      total: n,
-      get done() { return i >= n; },
-      get progress() { return n <= 1 ? 1 : Math.min(1, (i * (2 * n - i)) / (n * n)); },
-      runSlice: function (rows) {
-        const end = Math.min(n, i + rows);
-        for (; i < end; i++) {
-          const bi = i * dims, ki = i * K;
-          for (let j = i + 1; j < n; j++) {
-            const bj = j * dims;
-            let s = 0;
-            for (let d = 0; d < dims; d++) s += flat[bi + d] * flat[bj + d];
-            insertNbr(ki, j, s, K, nbr, sim);
-            insertNbr(j * K, i, s, K, nbr, sim);
-          }
+        function makeKNNRunner(flat, n, dims, K) {
+          const nbr = new Int32Array(n * K).fill(-1);
+          const sim = new Float32Array(n * K).fill(-Infinity);
+          let i = 0;
+          return {
+            total: n,
+            get done() {
+              return i >= n;
+            },
+            get progress() {
+              return n <= 1 ? 1 : Math.min(1, (i * (2 * n - i)) / (n * n));
+            },
+            runSlice: function (rows) {
+              const end = Math.min(n, i + rows);
+              for (; i < end; i++) {
+                const bi = i * dims,
+                  ki = i * K;
+                for (let j = i + 1; j < n; j++) {
+                  const bj = j * dims;
+                  let s = 0;
+                  for (let d = 0; d < dims; d++)
+                    s += flat[bi + d] * flat[bj + d];
+                  insertNbr(ki, j, s, K, nbr, sim);
+                  insertNbr(j * K, i, s, K, nbr, sim);
+                }
+              }
+              return i >= n;
+            },
+            result: function () {
+              return { nbr: nbr, sim: sim, K: K };
+            },
+          };
         }
-        return i >= n;
-      },
-      result: function () { return { nbr: nbr, sim: sim, K: K }; }
-    };
-  }
 
-  /* --------------------------------------------------------------- edges */
+        /* --------------------------------------------------------------- edges */
 
-  /* Mutual kNN with local scaling.
+        /* Mutual kNN with local scaling.
      sigma_i = similarity to i's k-th neighbour; weight = sim / sqrt(sigma_i*sigma_j).
      This stops dense sub-literatures from drowning out sparse ones. */
-  function buildEdges(knn, n, opts) {
-    const K = knn.K, nbr = knn.nbr, sim = knn.sim;
-    const k = Math.max(1, Math.min(opts.k | 0, K));
-    const mutual = opts.mutual !== false;
-    const minSim = typeof opts.minSim === "number" ? opts.minSim : 0;
-    const scale = opts.localScaling !== false;
+        function buildEdges(knn, n, opts) {
+          const K = knn.K,
+            nbr = knn.nbr,
+            sim = knn.sim;
+          const k = Math.max(1, Math.min(opts.k | 0, K));
+          const mutual = opts.mutual !== false;
+          const minSim = typeof opts.minSim === "number" ? opts.minSim : 0;
+          const scale = opts.localScaling !== false;
 
-    const sigma = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      let s = sim[i * K + k - 1];
-      if (!isFinite(s) || s <= 1e-6) {
-        for (let p = k - 1; p >= 0; p--) {
-          if (isFinite(sim[i * K + p]) && sim[i * K + p] > 1e-6) { s = sim[i * K + p]; break; }
+          const sigma = new Float32Array(n);
+          for (let i = 0; i < n; i++) {
+            let s = sim[i * K + k - 1];
+            if (!isFinite(s) || s <= 1e-6) {
+              for (let p = k - 1; p >= 0; p--) {
+                if (isFinite(sim[i * K + p]) && sim[i * K + p] > 1e-6) {
+                  s = sim[i * K + p];
+                  break;
+                }
+              }
+            }
+            sigma[i] = isFinite(s) && s > 1e-6 ? s : 1e-6;
+          }
+
+          const inTopK = function (a, b) {
+            const base = a * K;
+            for (let p = 0; p < k; p++) if (nbr[base + p] === b) return true;
+            return false;
+          };
+
+          const u = [],
+            v = [],
+            w = [];
+          for (let i = 0; i < n; i++) {
+            const base = i * K;
+            for (let p = 0; p < k; p++) {
+              const j = nbr[base + p];
+              if (j < 0 || j <= i) continue; // undirected, emit once
+              const s = sim[base + p];
+              if (!isFinite(s) || s < minSim) continue;
+              if (mutual && !inTopK(j, i)) continue;
+              const weight = scale ? s / Math.sqrt(sigma[i] * sigma[j]) : s;
+              u.push(i);
+              v.push(j);
+              w.push(weight);
+            }
+          }
+          // Union mode still needs pairs where j < i (emitted from j's row above only if
+          // i was in j's top-k); collect the remainder here.
+          if (!mutual) {
+            const seen = new Set();
+            for (let e = 0; e < u.length; e++) seen.add(u[e] * n + v[e]);
+            for (let i = 0; i < n; i++) {
+              const base = i * K;
+              for (let p = 0; p < k; p++) {
+                const j = nbr[base + p];
+                if (j < 0 || j >= i) continue; // pairs the loop above skipped
+                const key = j * n + i;
+                if (seen.has(key)) continue;
+                const s = sim[base + p];
+                if (!isFinite(s) || s < minSim) continue;
+                seen.add(key);
+                u.push(j);
+                v.push(i);
+                w.push(scale ? s / Math.sqrt(sigma[i] * sigma[j]) : s);
+              }
+            }
+          }
+
+          let maxW = 0;
+          for (let e = 0; e < w.length; e++) if (w[e] > maxW) maxW = w[e];
+          if (maxW > 0) for (let e = 0; e < w.length; e++) w[e] /= maxW;
+
+          return {
+            u: Int32Array.from(u),
+            v: Int32Array.from(v),
+            w: Float32Array.from(w),
+            count: w.length,
+          };
         }
-      }
-      sigma[i] = isFinite(s) && s > 1e-6 ? s : 1e-6;
-    }
 
-    const inTopK = function (a, b) {
-      const base = a * K;
-      for (let p = 0; p < k; p++) if (nbr[base + p] === b) return true;
-      return false;
-    };
-
-    const u = [], v = [], w = [];
-    for (let i = 0; i < n; i++) {
-      const base = i * K;
-      for (let p = 0; p < k; p++) {
-        const j = nbr[base + p];
-        if (j < 0 || j <= i) continue;      // undirected, emit once
-        const s = sim[base + p];
-        if (!isFinite(s) || s < minSim) continue;
-        if (mutual && !inTopK(j, i)) continue;
-        const weight = scale ? s / Math.sqrt(sigma[i] * sigma[j]) : s;
-        u.push(i); v.push(j); w.push(weight);
-      }
-    }
-    // Union mode still needs pairs where j < i (emitted from j's row above only if
-    // i was in j's top-k); collect the remainder here.
-    if (!mutual) {
-      const seen = new Set();
-      for (let e = 0; e < u.length; e++) seen.add(u[e] * n + v[e]);
-      for (let i = 0; i < n; i++) {
-        const base = i * K;
-        for (let p = 0; p < k; p++) {
-          const j = nbr[base + p];
-          if (j < 0 || j >= i) continue;          // pairs the loop above skipped
-          const key = j * n + i;
-          if (seen.has(key)) continue;
-          const s = sim[base + p];
-          if (!isFinite(s) || s < minSim) continue;
-          seen.add(key);
-          u.push(j); v.push(i);
-          w.push(scale ? s / Math.sqrt(sigma[i] * sigma[j]) : s);
+        function degrees(n, edges) {
+          const deg = new Float32Array(n),
+            cnt = new Int32Array(n);
+          for (let e = 0; e < edges.count; e++) {
+            deg[edges.u[e]] += edges.w[e];
+            deg[edges.v[e]] += edges.w[e];
+            cnt[edges.u[e]]++;
+            cnt[edges.v[e]]++;
+          }
+          return { weighted: deg, count: cnt };
         }
-      }
-    }
 
-    let maxW = 0;
-    for (let e = 0; e < w.length; e++) if (w[e] > maxW) maxW = w[e];
-    if (maxW > 0) for (let e = 0; e < w.length; e++) w[e] /= maxW;
+        /* ------------------------------------------------------------- Louvain */
 
-    return { u: Int32Array.from(u), v: Int32Array.from(v), w: Float32Array.from(w), count: w.length };
-  }
-
-  function degrees(n, edges) {
-    const deg = new Float32Array(n), cnt = new Int32Array(n);
-    for (let e = 0; e < edges.count; e++) {
-      deg[edges.u[e]] += edges.w[e];
-      deg[edges.v[e]] += edges.w[e];
-      cnt[edges.u[e]]++; cnt[edges.v[e]]++;
-    }
-    return { weighted: deg, count: cnt };
-  }
-
-  /* ------------------------------------------------------------- Louvain */
-
-  function buildAdj(n, eu, ev, ew, count) {
-    const head = new Int32Array(n).fill(-1);
-    const nxt = new Int32Array(count * 2);
-    const to = new Int32Array(count * 2);
-    const wt = new Float64Array(count * 2);
-    let p = 0;
-    for (let e = 0; e < count; e++) {
-      const a = eu[e], b = ev[e], x = ew[e];
-      to[p] = b; wt[p] = x; nxt[p] = head[a]; head[a] = p++;
-      to[p] = a; wt[p] = x; nxt[p] = head[b]; head[b] = p++;
-    }
-    return { head: head, nxt: nxt, to: to, wt: wt };
-  }
-
-  function louvainLevel(n, eu, ev, ew, ecount, selfLoops, resolution) {
-    const adj = buildAdj(n, eu, ev, ew, ecount);
-    const k = new Float64Array(n);
-    let m = 0;
-    for (let e = 0; e < ecount; e++) { k[eu[e]] += ew[e]; k[ev[e]] += ew[e]; m += ew[e]; }
-    for (let i = 0; i < n; i++) { k[i] += 2 * selfLoops[i]; m += selfLoops[i]; }
-    if (m <= 0) return { comm: new Int32Array(n).map(function (_, i) { return i; }), moved: false };
-    const twoM = 2 * m;
-
-    const comm = new Int32Array(n);
-    const sumTot = new Float64Array(n);
-    for (let i = 0; i < n; i++) { comm[i] = i; sumTot[i] = k[i]; }
-
-    const wTo = new Float64Array(n).fill(0);
-    const touched = new Int32Array(n);
-    let movedAny = false;
-
-    for (let pass = 0; pass < 20; pass++) {
-      let moves = 0;
-      for (let i = 0; i < n; i++) {
-        const ci = comm[i];
-        let nt = 0;
-        for (let p = adj.head[i]; p !== -1; p = adj.nxt[p]) {
-          const c = comm[adj.to[p]];
-          if (wTo[c] === 0) touched[nt++] = c;
-          wTo[c] += adj.wt[p];
+        function buildAdj(n, eu, ev, ew, count) {
+          const head = new Int32Array(n).fill(-1);
+          const nxt = new Int32Array(count * 2);
+          const to = new Int32Array(count * 2);
+          const wt = new Float64Array(count * 2);
+          let p = 0;
+          for (let e = 0; e < count; e++) {
+            const a = eu[e],
+              b = ev[e],
+              x = ew[e];
+            to[p] = b;
+            wt[p] = x;
+            nxt[p] = head[a];
+            head[a] = p++;
+            to[p] = a;
+            wt[p] = x;
+            nxt[p] = head[b];
+            head[b] = p++;
+          }
+          return { head: head, nxt: nxt, to: to, wt: wt };
         }
-        if (wTo[ci] === 0 && nt < n) touched[nt++] = ci;
 
-        sumTot[ci] -= k[i];
-        let bestC = ci;
-        let bestGain = wTo[ci] - resolution * sumTot[ci] * k[i] / twoM;
-        for (let t = 0; t < nt; t++) {
-          const c = touched[t];
-          if (c === ci) continue;
-          const gain = wTo[c] - resolution * sumTot[c] * k[i] / twoM;
-          if (gain > bestGain + 1e-12) { bestGain = gain; bestC = c; }
+        function louvainLevel(n, eu, ev, ew, ecount, selfLoops, resolution) {
+          const adj = buildAdj(n, eu, ev, ew, ecount);
+          const k = new Float64Array(n);
+          let m = 0;
+          for (let e = 0; e < ecount; e++) {
+            k[eu[e]] += ew[e];
+            k[ev[e]] += ew[e];
+            m += ew[e];
+          }
+          for (let i = 0; i < n; i++) {
+            k[i] += 2 * selfLoops[i];
+            m += selfLoops[i];
+          }
+          if (m <= 0)
+            return {
+              comm: new Int32Array(n).map(function (_, i) {
+                return i;
+              }),
+              moved: false,
+            };
+          const twoM = 2 * m;
+
+          const comm = new Int32Array(n);
+          const sumTot = new Float64Array(n);
+          for (let i = 0; i < n; i++) {
+            comm[i] = i;
+            sumTot[i] = k[i];
+          }
+
+          const wTo = new Float64Array(n).fill(0);
+          const touched = new Int32Array(n);
+          let movedAny = false;
+
+          for (let pass = 0; pass < 20; pass++) {
+            let moves = 0;
+            for (let i = 0; i < n; i++) {
+              const ci = comm[i];
+              let nt = 0;
+              for (let p = adj.head[i]; p !== -1; p = adj.nxt[p]) {
+                const c = comm[adj.to[p]];
+                if (wTo[c] === 0) touched[nt++] = c;
+                wTo[c] += adj.wt[p];
+              }
+              if (wTo[ci] === 0 && nt < n) touched[nt++] = ci;
+
+              sumTot[ci] -= k[i];
+              let bestC = ci;
+              let bestGain = wTo[ci] - (resolution * sumTot[ci] * k[i]) / twoM;
+              for (let t = 0; t < nt; t++) {
+                const c = touched[t];
+                if (c === ci) continue;
+                const gain = wTo[c] - (resolution * sumTot[c] * k[i]) / twoM;
+                if (gain > bestGain + 1e-12) {
+                  bestGain = gain;
+                  bestC = c;
+                }
+              }
+              sumTot[bestC] += k[i];
+              if (bestC !== ci) {
+                comm[i] = bestC;
+                moves++;
+                movedAny = true;
+              }
+
+              for (let t = 0; t < nt; t++) wTo[touched[t]] = 0;
+            }
+            if (moves === 0) break;
+          }
+          return { comm: comm, moved: movedAny };
         }
-        sumTot[bestC] += k[i];
-        if (bestC !== ci) { comm[i] = bestC; moves++; movedAny = true; }
 
-        for (let t = 0; t < nt; t++) wTo[touched[t]] = 0;
-      }
-      if (moves === 0) break;
-    }
-    return { comm: comm, moved: movedAny };
-  }
-
-  function relabel(comm) {
-    const map = new Map();
-    const out = new Int32Array(comm.length);
-    let next = 0;
-    for (let i = 0; i < comm.length; i++) {
-      let c = map.get(comm[i]);
-      if (c === undefined) { c = next++; map.set(comm[i], c); }
-      out[i] = c;
-    }
-    return { labels: out, count: next };
-  }
-
-  function louvain(n, edges, resolution) {
-    resolution = resolution || 1;
-    let curN = n;
-    let eu = edges.u, ev = edges.v, ew = edges.w, ec = edges.count;
-    let selfLoops = new Float64Array(n);
-    let mapping = new Int32Array(n);
-    for (let i = 0; i < n; i++) mapping[i] = i;
-
-    for (let level = 0; level < 12; level++) {
-      const res = louvainLevel(curN, eu, ev, ew, ec, selfLoops, resolution);
-      const rl = relabel(res.comm);
-      for (let i = 0; i < n; i++) mapping[i] = rl.labels[mapping[i]];
-      if (!res.moved || rl.count === curN) break;
-
-      // aggregate
-      const nc = rl.count;
-      const agg = new Map();
-      const newSelf = new Float64Array(nc);
-      for (let i = 0; i < curN; i++) newSelf[rl.labels[i]] += selfLoops[i];
-      for (let e = 0; e < ec; e++) {
-        const a = rl.labels[eu[e]], b = rl.labels[ev[e]];
-        if (a === b) { newSelf[a] += ew[e]; continue; }
-        const key = a < b ? a * nc + b : b * nc + a;
-        agg.set(key, (agg.get(key) || 0) + ew[e]);
-      }
-      const nu = new Int32Array(agg.size), nv = new Int32Array(agg.size), nw = new Float64Array(agg.size);
-      let p = 0;
-      agg.forEach(function (val, key) {
-        nu[p] = Math.floor(key / nc); nv[p] = key % nc; nw[p] = val; p++;
-      });
-      curN = nc; eu = nu; ev = nv; ew = nw; ec = p; selfLoops = newSelf;
-    }
-    return relabel(mapping);
-  }
-
-  /* ------------------------------------------------------------------ PCA */
-
-  /* Top-2 principal directions by power iteration; deterministic seed. */
-  function pca2(flat, n, dims, iters) {
-    iters = iters || 40;
-    const mean = new Float64Array(dims);
-    for (let i = 0; i < n; i++) {
-      const b = i * dims;
-      for (let d = 0; d < dims; d++) mean[d] += flat[b + d];
-    }
-    for (let d = 0; d < dims; d++) mean[d] /= n;
-
-    let seed = 12345;
-    const rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
-
-    const power = function (prev) {
-      let v = new Float64Array(dims);
-      for (let d = 0; d < dims; d++) v[d] = rnd();
-      const norm = function (a) {
-        let s = 0; for (let d = 0; d < dims; d++) s += a[d] * a[d];
-        s = Math.sqrt(s) || 1; for (let d = 0; d < dims; d++) a[d] /= s;
-      };
-      norm(v);
-      const tmp = new Float64Array(dims);
-      for (let it = 0; it < iters; it++) {
-        tmp.fill(0);
-        for (let i = 0; i < n; i++) {
-          const b = i * dims;
-          let dot = 0;
-          for (let d = 0; d < dims; d++) dot += (flat[b + d] - mean[d]) * v[d];
-          for (let d = 0; d < dims; d++) tmp[d] += dot * (flat[b + d] - mean[d]);
+        function relabel(comm) {
+          const map = new Map();
+          const out = new Int32Array(comm.length);
+          let next = 0;
+          for (let i = 0; i < comm.length; i++) {
+            let c = map.get(comm[i]);
+            if (c === undefined) {
+              c = next++;
+              map.set(comm[i], c);
+            }
+            out[i] = c;
+          }
+          return { labels: out, count: next };
         }
-        if (prev) {
-          let dp = 0;
-          for (let d = 0; d < dims; d++) dp += tmp[d] * prev[d];
-          for (let d = 0; d < dims; d++) tmp[d] -= dp * prev[d];
+
+        function louvain(n, edges, resolution) {
+          resolution = resolution || 1;
+          let curN = n;
+          let eu = edges.u,
+            ev = edges.v,
+            ew = edges.w,
+            ec = edges.count;
+          let selfLoops = new Float64Array(n);
+          let mapping = new Int32Array(n);
+          for (let i = 0; i < n; i++) mapping[i] = i;
+
+          for (let level = 0; level < 12; level++) {
+            const res = louvainLevel(
+              curN,
+              eu,
+              ev,
+              ew,
+              ec,
+              selfLoops,
+              resolution,
+            );
+            const rl = relabel(res.comm);
+            for (let i = 0; i < n; i++) mapping[i] = rl.labels[mapping[i]];
+            if (!res.moved || rl.count === curN) break;
+
+            // aggregate
+            const nc = rl.count;
+            const agg = new Map();
+            const newSelf = new Float64Array(nc);
+            for (let i = 0; i < curN; i++)
+              newSelf[rl.labels[i]] += selfLoops[i];
+            for (let e = 0; e < ec; e++) {
+              const a = rl.labels[eu[e]],
+                b = rl.labels[ev[e]];
+              if (a === b) {
+                newSelf[a] += ew[e];
+                continue;
+              }
+              const key = a < b ? a * nc + b : b * nc + a;
+              agg.set(key, (agg.get(key) || 0) + ew[e]);
+            }
+            const nu = new Int32Array(agg.size),
+              nv = new Int32Array(agg.size),
+              nw = new Float64Array(agg.size);
+            let p = 0;
+            agg.forEach(function (val, key) {
+              nu[p] = Math.floor(key / nc);
+              nv[p] = key % nc;
+              nw[p] = val;
+              p++;
+            });
+            curN = nc;
+            eu = nu;
+            ev = nv;
+            ew = nw;
+            ec = p;
+            selfLoops = newSelf;
+          }
+          return relabel(mapping);
         }
-        norm(tmp);
-        v.set(tmp);
-      }
-      return v;
-    };
 
-    const v1 = power(null);
-    const v2 = power(v1);
+        /* ------------------------------------------------------------------ PCA */
 
-    const x = new Float32Array(n), y = new Float32Array(n);
-    for (let i = 0; i < n; i++) {
-      const b = i * dims;
-      let a = 0, c = 0;
-      for (let d = 0; d < dims; d++) {
-        const cv = flat[b + d] - mean[d];
-        a += cv * v1[d]; c += cv * v2[d];
-      }
-      x[i] = a; y[i] = c;
-    }
-    return { x: x, y: y };
-  }
+        /* Top-2 principal directions by power iteration; deterministic seed. */
+        function pca2(flat, n, dims, iters) {
+          iters = iters || 40;
+          const mean = new Float64Array(dims);
+          for (let i = 0; i < n; i++) {
+            const b = i * dims;
+            for (let d = 0; d < dims; d++) mean[d] += flat[b + d];
+          }
+          for (let d = 0; d < dims; d++) mean[d] /= n;
 
-  function rescale(x, y, n, span) {
-    let minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
-    for (let i = 0; i < n; i++) {
-      if (x[i] < minx) minx = x[i]; if (x[i] > maxx) maxx = x[i];
-      if (y[i] < miny) miny = y[i]; if (y[i] > maxy) maxy = y[i];
-    }
-    const sx = (maxx - minx) || 1, sy = (maxy - miny) || 1;
-    const s = span / Math.max(sx, sy);
-    for (let i = 0; i < n; i++) {
-      x[i] = (x[i] - (minx + maxx) / 2) * s;
-      y[i] = (y[i] - (miny + maxy) / 2) * s;
-    }
-  }
+          let seed = 12345;
+          const rnd = function () {
+            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+            return seed / 0x7fffffff - 0.5;
+          };
 
-  /* --------------------------------------------------------------- layout */
+          const power = function (prev) {
+            let v = new Float64Array(dims);
+            for (let d = 0; d < dims; d++) v[d] = rnd();
+            const norm = function (a) {
+              let s = 0;
+              for (let d = 0; d < dims; d++) s += a[d] * a[d];
+              s = Math.sqrt(s) || 1;
+              for (let d = 0; d < dims; d++) a[d] /= s;
+            };
+            norm(v);
+            const tmp = new Float64Array(dims);
+            for (let it = 0; it < iters; it++) {
+              tmp.fill(0);
+              for (let i = 0; i < n; i++) {
+                const b = i * dims;
+                let dot = 0;
+                for (let d = 0; d < dims; d++)
+                  dot += (flat[b + d] - mean[d]) * v[d];
+                for (let d = 0; d < dims; d++)
+                  tmp[d] += dot * (flat[b + d] - mean[d]);
+              }
+              if (prev) {
+                let dp = 0;
+                for (let d = 0; d < dims; d++) dp += tmp[d] * prev[d];
+                for (let d = 0; d < dims; d++) tmp[d] -= dp * prev[d];
+              }
+              norm(tmp);
+              v.set(tmp);
+            }
+            return v;
+          };
 
-  /* ForceAtlas2-flavoured layout with grid-bucketed repulsion. */
-  function Layout(n, edges, x, y, deg, opts) {
-    this.n = n; this.edges = edges; this.x = x; this.y = y;
-    this.deg = deg;
-    this.dx = new Float32Array(n); this.dy = new Float32Array(n);
-    this.opts = Object.assign({ repulsion: 1.0, attraction: 0.08, gravity: 0.02, cell: 60,
-      clusters: null, clusterCount: 0, clusterPull: 0.02 }, opts || {});
-    this.cx = null; this.cy = null;
-    if (this.opts.clusters && this.opts.clusterCount) {
-      this.cx = new Float32Array(this.opts.clusterCount);
-      this.cy = new Float32Array(this.opts.clusterCount);
-    }
-    this.iter = 0;
-  }
+          const v1 = power(null);
+          const v2 = power(v1);
 
-  Layout.prototype.step = function () {
-    const n = this.n, x = this.x, y = this.y, dx = this.dx, dy = this.dy;
-    const o = this.opts;
-    dx.fill(0); dy.fill(0);
+          const x = new Float32Array(n),
+            y = new Float32Array(n);
+          for (let i = 0; i < n; i++) {
+            const b = i * dims;
+            let a = 0,
+              c = 0;
+            for (let d = 0; d < dims; d++) {
+              const cv = flat[b + d] - mean[d];
+              a += cv * v1[d];
+              c += cv * v2[d];
+            }
+            x[i] = a;
+            y[i] = c;
+          }
+          return { x: x, y: y };
+        }
 
-    // grid buckets
-    const cell = o.cell;
-    const buckets = new Map();
-    for (let i = 0; i < n; i++) {
-      const key = (Math.floor(x[i] / cell) + 4096) * 100000 + (Math.floor(y[i] / cell) + 4096);
-      let arr = buckets.get(key);
-      if (!arr) { arr = []; buckets.set(key, arr); }
-      arr.push(i);
-    }
-    // repulsion within a moderate neighbourhood — wide enough that local packing
-    // doesn't snap into a lattice; cluster-level separation comes from the
-    // centroid pull below rather than brute-force long-range repulsion.
-    const reach = 3;
-    const maxD2 = cell * cell * reach * reach;
-    buckets.forEach(function (arr, key) {
-      const cx = Math.floor(key / 100000), cy = key % 100000;
-      for (let ox = -reach; ox <= reach; ox++) {
-        for (let oy = -reach; oy <= reach; oy++) {
-          const other = buckets.get((cx + ox) * 100000 + (cy + oy));
-          if (!other) continue;
-          for (let a = 0; a < arr.length; a++) {
-            const i = arr[a];
-            for (let b = 0; b < other.length; b++) {
-              const j = other[b];
-              if (j <= i) continue;
-              let ddx = x[i] - x[j], ddy = y[i] - y[j];
-              let d2 = ddx * ddx + ddy * ddy;
-              if (d2 < 1e-4) { ddx = (i % 7) * 0.01 + 0.01; ddy = (j % 5) * 0.01 + 0.01; d2 = ddx * ddx + ddy * ddy; }
-              if (d2 > maxD2) continue;
-              const d = Math.sqrt(d2);
-              const f = o.repulsion * (1 + this.deg[i]) * (1 + this.deg[j]) / d;
-              const ux = ddx / d, uy = ddy / d;
-              dx[i] += ux * f; dy[i] += uy * f;
-              dx[j] -= ux * f; dy[j] -= uy * f;
+        function rescale(x, y, n, span) {
+          let minx = Infinity,
+            maxx = -Infinity,
+            miny = Infinity,
+            maxy = -Infinity;
+          for (let i = 0; i < n; i++) {
+            if (x[i] < minx) minx = x[i];
+            if (x[i] > maxx) maxx = x[i];
+            if (y[i] < miny) miny = y[i];
+            if (y[i] > maxy) maxy = y[i];
+          }
+          const sx = maxx - minx || 1,
+            sy = maxy - miny || 1;
+          const s = span / Math.max(sx, sy);
+          for (let i = 0; i < n; i++) {
+            x[i] = (x[i] - (minx + maxx) / 2) * s;
+            y[i] = (y[i] - (miny + maxy) / 2) * s;
+          }
+        }
+
+        /* --------------------------------------------------------------- layout */
+
+        /* ForceAtlas2-flavoured layout with grid-bucketed repulsion. */
+        function Layout(n, edges, x, y, deg, opts) {
+          this.n = n;
+          this.edges = edges;
+          this.x = x;
+          this.y = y;
+          this.deg = deg;
+          this.dx = new Float32Array(n);
+          this.dy = new Float32Array(n);
+          this.opts = Object.assign(
+            {
+              repulsion: 1.0,
+              attraction: 0.08,
+              gravity: 0.02,
+              cell: 60,
+              clusters: null,
+              clusterCount: 0,
+              clusterPull: 0.02,
+            },
+            opts || {},
+          );
+          this.cx = null;
+          this.cy = null;
+          if (this.opts.clusters && this.opts.clusterCount) {
+            this.cx = new Float32Array(this.opts.clusterCount);
+            this.cy = new Float32Array(this.opts.clusterCount);
+          }
+          this.iter = 0;
+        }
+
+        Layout.prototype.step = function () {
+          const n = this.n,
+            x = this.x,
+            y = this.y,
+            dx = this.dx,
+            dy = this.dy;
+          const o = this.opts;
+          dx.fill(0);
+          dy.fill(0);
+
+          // grid buckets
+          const cell = o.cell;
+          const buckets = new Map();
+          for (let i = 0; i < n; i++) {
+            const key =
+              (Math.floor(x[i] / cell) + 4096) * 100000 +
+              (Math.floor(y[i] / cell) + 4096);
+            let arr = buckets.get(key);
+            if (!arr) {
+              arr = [];
+              buckets.set(key, arr);
+            }
+            arr.push(i);
+          }
+          // repulsion within a moderate neighbourhood — wide enough that local packing
+          // doesn't snap into a lattice; cluster-level separation comes from the
+          // centroid pull below rather than brute-force long-range repulsion.
+          const reach = 3;
+          const maxD2 = cell * cell * reach * reach;
+          buckets.forEach(function (arr, key) {
+            const cx = Math.floor(key / 100000),
+              cy = key % 100000;
+            for (let ox = -reach; ox <= reach; ox++) {
+              for (let oy = -reach; oy <= reach; oy++) {
+                const other = buckets.get((cx + ox) * 100000 + (cy + oy));
+                if (!other) continue;
+                for (let a = 0; a < arr.length; a++) {
+                  const i = arr[a];
+                  for (let b = 0; b < other.length; b++) {
+                    const j = other[b];
+                    if (j <= i) continue;
+                    let ddx = x[i] - x[j],
+                      ddy = y[i] - y[j];
+                    let d2 = ddx * ddx + ddy * ddy;
+                    if (d2 < 1e-4) {
+                      ddx = (i % 7) * 0.01 + 0.01;
+                      ddy = (j % 5) * 0.01 + 0.01;
+                      d2 = ddx * ddx + ddy * ddy;
+                    }
+                    if (d2 > maxD2) continue;
+                    const d = Math.sqrt(d2);
+                    const f =
+                      (o.repulsion * (1 + this.deg[i]) * (1 + this.deg[j])) / d;
+                    const ux = ddx / d,
+                      uy = ddy / d;
+                    dx[i] += ux * f;
+                    dy[i] += uy * f;
+                    dx[j] -= ux * f;
+                    dy[j] -= uy * f;
+                  }
+                }
+              }
+            }
+          }, this);
+
+          // attraction along edges
+          const E = this.edges;
+          for (let e = 0; e < E.count; e++) {
+            const i = E.u[e],
+              j = E.v[e],
+              w = E.w[e];
+            const ddx = x[j] - x[i],
+              ddy = y[j] - y[i];
+            const d = Math.sqrt(ddx * ddx + ddy * ddy) || 1e-4;
+            const f = o.attraction * w * d;
+            const ux = ddx / d,
+              uy = ddy / d;
+            dx[i] += ux * f;
+            dy[i] += uy * f;
+            dx[j] -= ux * f;
+            dy[j] -= uy * f;
+          }
+
+          // cluster cohesion + separation: pull each node toward its own cluster's
+          // centroid, and push cluster centroids apart from one another — together
+          // these turn Louvain communities into distinct, spread-out blobs instead
+          // of a single packed mass.
+          const clusters = o.clusters,
+            cx = this.cx,
+            cy = this.cy;
+          if (clusters && cx) {
+            const nc = cx.length;
+            cx.fill(0);
+            cy.fill(0);
+            const cnt = new Int32Array(nc);
+            for (let i = 0; i < n; i++) {
+              const c = clusters[i];
+              cx[c] += x[i];
+              cy[c] += y[i];
+              cnt[c]++;
+            }
+            for (let c = 0; c < nc; c++)
+              if (cnt[c] > 0) {
+                cx[c] /= cnt[c];
+                cy[c] /= cnt[c];
+              }
+
+            // desired target separation grows with the size of the two clusters,
+            // so big communities push a lot further apart than two small ones
+            const ccx = new Float32Array(nc),
+              ccy = new Float32Array(nc);
+            const minSep = o.clusterSeparation || 260;
+            for (let a = 0; a < nc; a++) {
+              if (cnt[a] === 0) continue;
+              for (let b = a + 1; b < nc; b++) {
+                if (cnt[b] === 0) continue;
+                let ddx = cx[a] - cx[b],
+                  ddy = cy[a] - cy[b];
+                let d2 = ddx * ddx + ddy * ddy;
+                if (d2 < 1e-4) {
+                  ddx = (a % 7) * 0.5 + 0.5;
+                  ddy = (b % 5) * 0.5 + 0.5;
+                  d2 = ddx * ddx + ddy * ddy;
+                }
+                const d = Math.sqrt(d2);
+                const want = minSep * Math.sqrt((cnt[a] + cnt[b]) / 2);
+                if (d >= want) continue; // already far enough apart
+                const f = (want - d) * 0.5; // spring-style push, not 1/d decay
+                const ux = ddx / d,
+                  uy = ddy / d;
+                ccx[a] += ux * f;
+                ccy[a] += uy * f;
+                ccx[b] -= ux * f;
+                ccy[b] -= uy * f;
+              }
+            }
+
+            for (let i = 0; i < n; i++) {
+              const c = clusters[i];
+              dx[i] += (cx[c] - x[i]) * o.clusterPull + ccx[c];
+              dy[i] += (cy[c] - y[i]) * o.clusterPull + ccy[c];
+            }
+          }
+
+          // gravity + integrate with cooling
+          const cool = Math.max(0.08, 1 / (1 + this.iter * 0.02));
+          const maxStep = 12 * cool;
+          for (let i = 0; i < n; i++) {
+            dx[i] -= o.gravity * x[i] * (1 + this.deg[i]);
+            dy[i] -= o.gravity * y[i] * (1 + this.deg[i]);
+            let sx = dx[i] * cool,
+              sy = dy[i] * cool;
+            const m = Math.sqrt(sx * sx + sy * sy);
+            if (m > maxStep) {
+              sx = (sx / m) * maxStep;
+              sy = (sy / m) * maxStep;
+            }
+            x[i] += sx;
+            y[i] += sy;
+          }
+          this.iter++;
+        };
+
+        /* --------------------------------------------------------- cluster names */
+
+        const STOP = new Set(
+          (
+            "a an the and or of for in on with to from by at as is are be " +
+            "using use used via towards toward new novel study studies analysis approach approaches " +
+            "based case review paper article research method methods model models results effect " +
+            "effects role between during their its this that these those we our it not can may " +
+            "under over into about after before more most less than through across within without " +
+            "high low large small first second three two one non pre post multi self also such " +
+            "system systems data evidence findings among since when what how why does do done"
+          ).split(" "),
+        );
+
+        function tokenize(s) {
+          return String(s || "")
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, " ")
+            .split(/\s+/)
+            .filter(function (t) {
+              return (
+                t.length > 2 &&
+                t.length < 24 &&
+                !STOP.has(t) &&
+                !/^\d+$/.test(t)
+              );
+            });
+        }
+
+        /* class-based TF-IDF: terms that are frequent in a cluster and rare across clusters */
+        function clusterLabels(labels, count, texts, topN) {
+          topN = topN || 3;
+          const tf = [],
+            totals = new Float64Array(count);
+          for (let c = 0; c < count; c++) tf.push(new Map());
+          const df = new Map();
+          for (let i = 0; i < labels.length; i++) {
+            const c = labels[i];
+            const seen = new Set();
+            const toks = tokenize(texts[i]);
+            for (let t = 0; t < toks.length; t++) {
+              const w = toks[t];
+              tf[c].set(w, (tf[c].get(w) || 0) + 1);
+              totals[c]++;
+              if (!seen.has(w)) {
+                seen.add(w);
+                df.set(w, (df.get(w) || 0) + 1);
+              }
+            }
+          }
+          const N = labels.length || 1;
+          const out = [];
+          for (let c = 0; c < count; c++) {
+            const scored = [];
+            tf[c].forEach(function (f, w) {
+              if (f < 2 && totals[c] > 40) return;
+              const score =
+                (f / (totals[c] || 1)) * Math.log(1 + N / (df.get(w) || 1));
+              scored.push([w, score]);
+            });
+            scored.sort(function (a, b) {
+              return b[1] - a[1];
+            });
+            out.push(
+              scored
+                .slice(0, topN)
+                .map(function (p) {
+                  return p[0];
+                })
+                .join(" · ") || "cluster " + (c + 1),
+            );
+          }
+          return out;
+        }
+
+        root.GraphCore = {
+          normalizeRows: normalizeRows,
+          truncate: truncate,
+          makeKNNRunner: makeKNNRunner,
+          buildEdges: buildEdges,
+          degrees: degrees,
+          louvain: louvain,
+          pca2: pca2,
+          rescale: rescale,
+          Layout: Layout,
+          clusterLabels: clusterLabels,
+        };
+      })(typeof globalThis !== "undefined" ? globalThis : this);
+    </script>
+    <script>
+      /* zotgraph_app.js — UI layer over GraphCore. */
+      (function () {
+        "use strict";
+        var G = window.GraphCore;
+
+        var PALETTE = [
+          "#e0574a",
+          "#4fa3e3",
+          "#3fb87f",
+          "#b47fe0",
+          "#e0a83f",
+          "#3fc6c6",
+          "#e0568f",
+          "#9aa5c9",
+          "#d1b23f",
+          "#5c9be0",
+          "#e0704a",
+          "#3fbfa0",
+          "#a682e0",
+          "#e0913f",
+          "#5b8fd6",
+          "#c9a24f",
+        ];
+        var MUTED = "#3a3f4d";
+
+        var S = {
+          nodes: null,
+          flat: null,
+          dims: 0,
+          n: 0,
+          knn: null,
+          edges: null,
+          deg: null,
+          clusters: null,
+          labels: [],
+          x: null,
+          y: null,
+          layout: null,
+          anim: 0,
+          view: { s: 1, tx: 0, ty: 0 },
+          hover: -1,
+          sel: -1,
+          focus: null,
+          activeCluster: -1,
+          drawEdges: false,
+          running: false,
+        };
+
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        var canvas = $("cv"),
+          ctx = canvas.getContext("2d");
+
+        function status(msg, busy) {
+          $("status").textContent = msg;
+          $("status").className = busy ? "busy" : "";
+        }
+
+        function resize() {
+          var r = canvas.parentNode.getBoundingClientRect();
+          var dpr = window.devicePixelRatio || 1;
+          canvas.width = Math.max(1, Math.floor(r.width * dpr));
+          canvas.height = Math.max(1, Math.floor(r.height * dpr));
+          canvas.style.width = r.width + "px";
+          canvas.style.height = r.height + "px";
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          draw();
+        }
+        window.addEventListener("resize", resize);
+
+        /* ------------------------------------------------------------- loading */
+
+        function readFile(file) {
+          status("Reading " + file.name + "…", true);
+          var fr = new FileReader();
+          fr.onload = function () {
+            var data;
+            try {
+              data = JSON.parse(fr.result);
+            } catch (e) {
+              status("That file isn't valid JSON. Re-run the export script.");
+              return;
+            }
+            if (!data.nodes || !data.vectors || !data.nodes.length) {
+              status(
+                "No nodes in that file. Check the export ran against an indexed library.",
+              );
+              return;
+            }
+            ingest(data);
+          };
+          fr.onerror = function () {
+            status("Couldn't read that file.");
+          };
+          fr.readAsText(file);
+        }
+
+        function ingest(data) {
+          var n = data.nodes.length,
+            dims = data.dims || data.vectors[0].length;
+          var flat = new Float32Array(n * dims);
+          for (var i = 0; i < n; i++) {
+            var v = data.vectors[i];
+            for (var d = 0; d < dims; d++) flat[i * dims + d] = v[d];
+          }
+          G.normalizeRows(flat, n, dims);
+          S.nodes = data.nodes;
+          S.flat = flat;
+          S.dims = dims;
+          S.n = n;
+          S.knn = null;
+          S.sel = -1;
+          S.focus = null;
+          S.activeCluster = -1;
+          $("meta").textContent =
+            n +
+            " items · " +
+            dims +
+            " dims · " +
+            (data.modelId || "unknown model");
+          $("dropzone").style.display = "none";
+          $("controls").style.display = "block";
+          $("detail").style.display = "block";
+          runKNN();
+        }
+
+        /* ---------------------------------------------------------------- kNN */
+
+        function runKNN() {
+          var keep = parseInt($("kdims").value, 10);
+          var t = G.truncate(S.flat, S.n, S.dims, keep);
+          var K = Math.min(70, Math.max(20, S.n - 1));
+          var runner = G.makeKNNRunner(t.flat, S.n, t.dims, K);
+          var t0 = performance.now();
+          S.running = true;
+
+          function slice() {
+            var rows = S.n > 4000 ? 12 : 60;
+            var done = runner.runSlice(rows);
+            var pct = Math.round(runner.progress * 100);
+            status("Comparing every pair — " + pct + "%", true);
+            $("bar").style.width = pct + "%";
+            if (done) {
+              S.knn = runner.result();
+              $("bar").style.width = "0%";
+              S.running = false;
+              status(
+                "Similarities computed in " +
+                  ((performance.now() - t0) / 1000).toFixed(1) +
+                  "s",
+              );
+              initPositions();
+              rebuild();
+            } else {
+              setTimeout(slice, 0);
+            }
+          }
+          setTimeout(slice, 0);
+        }
+
+        function initPositions() {
+          var p = G.pca2(S.flat, S.n, S.dims, 30);
+          G.rescale(p.x, p.y, S.n, 900);
+          S.x = p.x;
+          S.y = p.y;
+          fitView();
+        }
+
+        /* ------------------------------------------------------------ rebuild */
+
+        function rebuild() {
+          if (!S.knn) return;
+          var k = parseInt($("k").value, 10);
+          var res = parseFloat($("res").value);
+          var minSim = parseFloat($("minsim").value);
+          var mutual = $("mutual").checked;
+
+          S.edges = G.buildEdges(S.knn, S.n, {
+            k: k,
+            mutual: mutual,
+            minSim: minSim,
+            localScaling: true,
+          });
+          S.deg = G.degrees(S.n, S.edges);
+          var cl = G.louvain(S.n, S.edges, res);
+          S.clusters = cl.labels;
+          var texts = S.nodes.map(function (nd) {
+            return nd.title + " " + (nd.abstract || "").slice(0, 200);
+          });
+          S.labels = G.clusterLabels(cl.labels, cl.count, texts, 3);
+
+          var iso = 0;
+          for (var i = 0; i < S.n; i++) if (S.deg.count[i] === 0) iso++;
+          $("gstats").textContent =
+            S.edges.count +
+            " links · " +
+            cl.count +
+            " clusters · " +
+            iso +
+            " unlinked";
+          renderLegend(cl.count);
+          startLayout();
+        }
+
+        function startLayout() {
+          cancelAnimationFrame(S.anim);
+          var clusterCount = S.clusters
+            ? Math.max.apply(null, Array.from(S.clusters)) + 1
+            : 0;
+          S.layout = new G.Layout(S.n, S.edges, S.x, S.y, S.deg.count, {
+            repulsion: parseFloat($("spread").value),
+            gravity: parseFloat($("gravity").value),
+            attraction: 0.08,
+            cell: 60,
+            clusters: S.clusters,
+            clusterCount: clusterCount,
+            clusterPull: 0.03,
+            clusterSeparation: 320,
+          });
+          var iters = 0,
+            target = 400;
+          function tick() {
+            var budget = performance.now() + 12;
+            while (performance.now() < budget && iters < target) {
+              S.layout.step();
+              iters++;
+            }
+            draw();
+            $("bar").style.width = Math.round((iters / target) * 100) + "%";
+            if (iters < target) {
+              status("Settling layout — iteration " + iters, true);
+              S.anim = requestAnimationFrame(tick);
+            } else {
+              $("bar").style.width = "0%";
+              status(
+                "Ready. Click a paper to inspect it; double-click to isolate its neighbourhood.",
+              );
+              fitView();
+              draw();
+            }
+          }
+          tick();
+        }
+
+        /* ------------------------------------------------------------- legend */
+
+        function renderLegend(count) {
+          var sizes = new Array(count).fill(0);
+          for (var i = 0; i < S.n; i++) sizes[S.clusters[i]]++;
+          var order = sizes
+            .map(function (v, i) {
+              return [i, v];
+            })
+            .sort(function (a, b) {
+              return b[1] - a[1];
+            });
+          var html = "";
+          for (var q = 0; q < Math.min(order.length, 22); q++) {
+            var c = order[q][0];
+            html +=
+              '<button class="leg' +
+              (S.activeCluster === c ? " on" : "") +
+              '" data-c="' +
+              c +
+              '">' +
+              '<span class="sw" style="background:' +
+              colorOf(c) +
+              '"></span>' +
+              '<span class="lt">' +
+              esc(S.labels[c]) +
+              "</span>" +
+              '<span class="ln">' +
+              order[q][1] +
+              "</span></button>";
+          }
+          $("legend").innerHTML = html;
+          Array.prototype.forEach.call(
+            $("legend").querySelectorAll(".leg"),
+            function (b) {
+              b.onclick = function () {
+                var c = parseInt(b.dataset.c, 10);
+                S.activeCluster = S.activeCluster === c ? -1 : c;
+                S.focus = null;
+                renderLegend(count);
+                draw();
+              };
+            },
+          );
+        }
+
+        function colorOf(c) {
+          return PALETTE[c % PALETTE.length];
+        }
+        function esc(s) {
+          return String(s).replace(/[&<>"]/g, function (m) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m];
+          });
+        }
+
+        /* -------------------------------------------------------------- view */
+
+        function fitView() {
+          if (!S.x) return;
+          var r = canvas.getBoundingClientRect();
+          var minx = Infinity,
+            maxx = -Infinity,
+            miny = Infinity,
+            maxy = -Infinity;
+          for (var i = 0; i < S.n; i++) {
+            if (S.x[i] < minx) minx = S.x[i];
+            if (S.x[i] > maxx) maxx = S.x[i];
+            if (S.y[i] < miny) miny = S.y[i];
+            if (S.y[i] > maxy) maxy = S.y[i];
+          }
+          var w = maxx - minx || 1,
+            h = maxy - miny || 1;
+          S.view.s = Math.min(r.width / (w * 1.15), r.height / (h * 1.15));
+          S.view.tx = r.width / 2 - ((minx + maxx) / 2) * S.view.s;
+          S.view.ty = r.height / 2 - ((miny + maxy) / 2) * S.view.s;
+        }
+
+        function sx(i) {
+          return S.x[i] * S.view.s + S.view.tx;
+        }
+        function sy(i) {
+          return S.y[i] * S.view.s + S.view.ty;
+        }
+
+        function visible(i) {
+          if (S.focus) return S.focus.has(i);
+          if (S.activeCluster >= 0) return S.clusters[i] === S.activeCluster;
+          return true;
+        }
+
+        /* -------------------------------------------------------------- draw */
+
+        function draw() {
+          if (!S.x) return;
+          var r = canvas.getBoundingClientRect();
+          ctx.clearRect(0, 0, r.width, r.height);
+          ctx.fillStyle = "#0b0d13";
+          ctx.fillRect(0, 0, r.width, r.height);
+
+          var nbrSet = null,
+            nbrSim = null;
+          var hl = S.sel >= 0 ? S.sel : S.hover;
+          if (hl >= 0 && S.knn) {
+            nbrSet = new Set([hl]);
+            nbrSim = new Map();
+            var K = S.knn.K,
+              k = parseInt($("k").value, 10);
+            var simMin = Infinity,
+              simMax = -Infinity;
+            for (var p = 0; p < k; p++) {
+              var j = S.knn.nbr[hl * K + p];
+              var s = S.knn.sim[hl * K + p];
+              if (j >= 0 && isFinite(s)) {
+                nbrSet.add(j);
+                nbrSim.set(j, s);
+                if (s < simMin) simMin = s;
+                if (s > simMax) simMax = s;
+              }
+            }
+            var simRange = simMax - simMin || 1;
+          }
+
+          // edges — soft additive-style strokes; density itself reads as "strength"
+          if (S.drawEdges && S.edges) {
+            var E = S.edges,
+              cap = 26000;
+            var stride = E.count > cap ? Math.ceil(E.count / cap) : 1;
+            ctx.lineWidth = 1;
+            ctx.globalCompositeOperation = "lighter";
+            for (var e = 0; e < E.count; e++) {
+              var a = E.u[e],
+                b = E.v[e];
+              if (!visible(a) || !visible(b)) continue;
+              var strong = nbrSet && nbrSet.has(a) && nbrSet.has(b);
+              if (stride > 1 && !strong && e % stride !== 0) continue;
+              var w = E.w[e];
+              if (nbrSet)
+                ctx.strokeStyle = strong
+                  ? "rgba(255,255,255,0.38)"
+                  : "rgba(140,150,170,0.035)";
+              else
+                ctx.strokeStyle =
+                  "rgba(150,165,200," + (0.035 + w * 0.16).toFixed(3) + ")";
+              ctx.beginPath();
+              ctx.moveTo(sx(a), sy(a));
+              ctx.lineTo(sx(b), sy(b));
+              ctx.stroke();
+            }
+            ctx.globalCompositeOperation = "source-over";
+          }
+
+          // nodes — soft glow halo + translucent fill + crisp core, connected-papers style
+          for (var i = 0; i < S.n; i++) {
+            var vis = visible(i);
+            var rad =
+              2.6 + Math.min(7, Math.sqrt(S.deg ? S.deg.count[i] : 1) * 1.1);
+            if (nbrSet && i !== hl && nbrSim && nbrSim.has(i)) {
+              // normalize against this node's own neighbour spread, since raw cosine
+              // similarities for related papers usually sit in a narrow high band
+              var simPct = (nbrSim.get(i) - simMin) / simRange;
+              rad = 3 + simPct * 11; // size now reflects similarity to the selected paper
+            } else if (nbrSet && i === hl) {
+              rad = Math.max(rad, 9); // selected node stays clearly the anchor
+            }
+            var dim = (nbrSet && !nbrSet.has(i)) || !vis;
+            var px = sx(i),
+              py = sy(i);
+            var col = dim ? MUTED : colorOf(S.clusters ? S.clusters[i] : 0);
+
+            if (!dim) {
+              var glowR = rad * 3.2;
+              var glow = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+              glow.addColorStop(0, hexToRgba(col, 0.35));
+              glow.addColorStop(1, hexToRgba(col, 0));
+              ctx.globalCompositeOperation = "lighter";
+              ctx.fillStyle = glow;
+              ctx.beginPath();
+              ctx.arc(px, py, glowR, 0, 6.2832);
+              ctx.fill();
+              ctx.globalCompositeOperation = "source-over";
+            }
+
+            ctx.beginPath();
+            ctx.arc(px, py, rad, 0, 6.2832);
+            ctx.fillStyle = hexToRgba(col, dim ? (vis ? 0.3 : 0.08) : 0.55);
+            ctx.fill();
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = hexToRgba(col, dim ? (vis ? 0.4 : 0.1) : 0.95);
+            ctx.stroke();
+          }
+
+          // selection ring
+          if (S.sel >= 0) {
+            ctx.beginPath();
+            ctx.arc(sx(S.sel), sy(S.sel), 13, 0, 6.2832);
+            ctx.strokeStyle = "rgba(255,255,255,0.85)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+
+          // cluster names when zoomed out, titles when zoomed in
+          if (S.clusters) {
+            if (S.view.s < 0.55) {
+              var cx = {},
+                cy = {},
+                cn = {};
+              for (var q = 0; q < S.n; q++) {
+                if (!visible(q)) continue;
+                var c = S.clusters[q];
+                cx[c] = (cx[c] || 0) + sx(q);
+                cy[c] = (cy[c] || 0) + sy(q);
+                cn[c] = (cn[c] || 0) + 1;
+              }
+              ctx.font =
+                "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
+              ctx.textAlign = "center";
+              for (var key in cn) {
+                if (cn[key] < Math.max(3, S.n * 0.012)) continue;
+                var tx = cx[key] / cn[key],
+                  ty = cy[key] / cn[key];
+                var label = S.labels[key] || "";
+                ctx.fillStyle = "rgba(11,13,19,0.72)";
+                var wpx = ctx.measureText(label).width;
+                ctx.fillRect(tx - wpx / 2 - 5, ty - 9, wpx + 10, 15);
+                ctx.fillStyle = colorOf(parseInt(key, 10));
+                ctx.fillText(label, tx, ty + 2);
+              }
+            } else {
+              ctx.font = "11px Inter, system-ui, sans-serif";
+              ctx.textAlign = "left";
+              ctx.fillStyle = "rgba(230,233,240,0.82)";
+              for (var t = 0; t < S.n; t++) {
+                if (!visible(t)) continue;
+                if (S.view.s < 1.4 && S.deg && S.deg.count[t] < 3) continue;
+                var title = S.nodes[t].title;
+                if (title.length > 46) title = title.slice(0, 44) + "…";
+                ctx.fillText(title, sx(t) + 9, sy(t) + 3.5);
+              }
             }
           }
         }
-      }
-    }, this);
 
-    // attraction along edges
-    const E = this.edges;
-    for (let e = 0; e < E.count; e++) {
-      const i = E.u[e], j = E.v[e], w = E.w[e];
-      const ddx = x[j] - x[i], ddy = y[j] - y[i];
-      const d = Math.sqrt(ddx * ddx + ddy * ddy) || 1e-4;
-      const f = o.attraction * w * d;
-      const ux = ddx / d, uy = ddy / d;
-      dx[i] += ux * f; dy[i] += uy * f;
-      dx[j] -= ux * f; dy[j] -= uy * f;
-    }
-
-    // cluster cohesion + separation: pull each node toward its own cluster's
-    // centroid, and push cluster centroids apart from one another — together
-    // these turn Louvain communities into distinct, spread-out blobs instead
-    // of a single packed mass.
-    const clusters = o.clusters, cx = this.cx, cy = this.cy;
-    if (clusters && cx) {
-      const nc = cx.length;
-      cx.fill(0); cy.fill(0);
-      const cnt = new Int32Array(nc);
-      for (let i = 0; i < n; i++) { const c = clusters[i]; cx[c] += x[i]; cy[c] += y[i]; cnt[c]++; }
-      for (let c = 0; c < nc; c++) if (cnt[c] > 0) { cx[c] /= cnt[c]; cy[c] /= cnt[c]; }
-
-      // desired target separation grows with the size of the two clusters,
-      // so big communities push a lot further apart than two small ones
-      const ccx = new Float32Array(nc), ccy = new Float32Array(nc);
-      const minSep = o.clusterSeparation || 260;
-      for (let a = 0; a < nc; a++) {
-        if (cnt[a] === 0) continue;
-        for (let b = a + 1; b < nc; b++) {
-          if (cnt[b] === 0) continue;
-          let ddx = cx[a] - cx[b], ddy = cy[a] - cy[b];
-          let d2 = ddx * ddx + ddy * ddy;
-          if (d2 < 1e-4) { ddx = (a % 7) * 0.5 + 0.5; ddy = (b % 5) * 0.5 + 0.5; d2 = ddx * ddx + ddy * ddy; }
-          const d = Math.sqrt(d2);
-          const want = minSep * Math.sqrt((cnt[a] + cnt[b]) / 2);
-          if (d >= want) continue;              // already far enough apart
-          const f = (want - d) * 0.5;            // spring-style push, not 1/d decay
-          const ux = ddx / d, uy = ddy / d;
-          ccx[a] += ux * f; ccy[a] += uy * f;
-          ccx[b] -= ux * f; ccy[b] -= uy * f;
+        function hexToRgba(hex, a) {
+          var v = parseInt(hex.slice(1), 16);
+          var r = (v >> 16) & 255,
+            g = (v >> 8) & 255,
+            b = v & 255;
+          return "rgba(" + r + "," + g + "," + b + "," + a + ")";
         }
-      }
 
-      for (let i = 0; i < n; i++) {
-        const c = clusters[i];
-        dx[i] += (cx[c] - x[i]) * o.clusterPull + ccx[c];
-        dy[i] += (cy[c] - y[i]) * o.clusterPull + ccy[c];
-      }
-    }
+        /* --------------------------------------------------------- interaction */
 
-    // gravity + integrate with cooling
-    const cool = Math.max(0.08, 1 / (1 + this.iter * 0.02));
-    const maxStep = 12 * cool;
-    for (let i = 0; i < n; i++) {
-      dx[i] -= o.gravity * x[i] * (1 + this.deg[i]);
-      dy[i] -= o.gravity * y[i] * (1 + this.deg[i]);
-      let sx = dx[i] * cool, sy = dy[i] * cool;
-      const m = Math.sqrt(sx * sx + sy * sy);
-      if (m > maxStep) { sx = sx / m * maxStep; sy = sy / m * maxStep; }
-      x[i] += sx; y[i] += sy;
-    }
-    this.iter++;
-  };
-
-  /* --------------------------------------------------------- cluster names */
-
-  const STOP = new Set(("a an the and or of for in on with to from by at as is are be " +
-    "using use used via towards toward new novel study studies analysis approach approaches " +
-    "based case review paper article research method methods model models results effect " +
-    "effects role between during their its this that these those we our it not can may " +
-    "under over into about after before more most less than through across within without " +
-    "high low large small first second three two one non pre post multi self also such " +
-    "system systems data evidence findings among since when what how why does do done").split(" "));
-
-  function tokenize(s) {
-    return String(s || "").toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, " ")
-      .split(/\s+/)
-      .filter(function (t) { return t.length > 2 && t.length < 24 && !STOP.has(t) && !/^\d+$/.test(t); });
-  }
-
-  /* class-based TF-IDF: terms that are frequent in a cluster and rare across clusters */
-  function clusterLabels(labels, count, texts, topN) {
-    topN = topN || 3;
-    const tf = [], totals = new Float64Array(count);
-    for (let c = 0; c < count; c++) tf.push(new Map());
-    const df = new Map();
-    for (let i = 0; i < labels.length; i++) {
-      const c = labels[i];
-      const seen = new Set();
-      const toks = tokenize(texts[i]);
-      for (let t = 0; t < toks.length; t++) {
-        const w = toks[t];
-        tf[c].set(w, (tf[c].get(w) || 0) + 1);
-        totals[c]++;
-        if (!seen.has(w)) { seen.add(w); df.set(w, (df.get(w) || 0) + 1); }
-      }
-    }
-    const N = labels.length || 1;
-    const out = [];
-    for (let c = 0; c < count; c++) {
-      const scored = [];
-      tf[c].forEach(function (f, w) {
-        if (f < 2 && totals[c] > 40) return;
-        const score = (f / (totals[c] || 1)) * Math.log(1 + N / (df.get(w) || 1));
-        scored.push([w, score]);
-      });
-      scored.sort(function (a, b) { return b[1] - a[1]; });
-      out.push(scored.slice(0, topN).map(function (p) { return p[0]; }).join(" · ") || "cluster " + (c + 1));
-    }
-    return out;
-  }
-
-  root.GraphCore = {
-    normalizeRows: normalizeRows,
-    truncate: truncate,
-    makeKNNRunner: makeKNNRunner,
-    buildEdges: buildEdges,
-    degrees: degrees,
-    louvain: louvain,
-    pca2: pca2,
-    rescale: rescale,
-    Layout: Layout,
-    clusterLabels: clusterLabels
-  };
-})(typeof globalThis !== "undefined" ? globalThis : this);
-</script>
-<script>/* zotgraph_app.js — UI layer over GraphCore. */
-(function () {
-  "use strict";
-  var G = window.GraphCore;
-
-  var PALETTE = ["#e0574a", "#4fa3e3", "#3fb87f", "#b47fe0", "#e0a83f", "#3fc6c6",
-    "#e0568f", "#9aa5c9", "#d1b23f", "#5c9be0", "#e0704a", "#3fbfa0",
-    "#a682e0", "#e0913f", "#5b8fd6", "#c9a24f"];
-  var MUTED = "#3a3f4d";
-
-  var S = {
-    nodes: null, flat: null, dims: 0, n: 0,
-    knn: null, edges: null, deg: null, clusters: null, labels: [],
-    x: null, y: null, layout: null, anim: 0,
-    view: { s: 1, tx: 0, ty: 0 },
-    hover: -1, sel: -1, focus: null, activeCluster: -1,
-    drawEdges: true, running: false
-  };
-
-  var $ = function (id) { return document.getElementById(id); };
-  var canvas = $("cv"), ctx = canvas.getContext("2d");
-
-  function status(msg, busy) {
-    $("status").textContent = msg;
-    $("status").className = busy ? "busy" : "";
-  }
-
-  function resize() {
-    var r = canvas.parentNode.getBoundingClientRect();
-    var dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.max(1, Math.floor(r.width * dpr));
-    canvas.height = Math.max(1, Math.floor(r.height * dpr));
-    canvas.style.width = r.width + "px";
-    canvas.style.height = r.height + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw();
-  }
-  window.addEventListener("resize", resize);
-
-  /* ------------------------------------------------------------- loading */
-
-  function readFile(file) {
-    status("Reading " + file.name + "…", true);
-    var fr = new FileReader();
-    fr.onload = function () {
-      var data;
-      try { data = JSON.parse(fr.result); }
-      catch (e) { status("That file isn't valid JSON. Re-run the export script."); return; }
-      if (!data.nodes || !data.vectors || !data.nodes.length) {
-        status("No nodes in that file. Check the export ran against an indexed library.");
-        return;
-      }
-      ingest(data);
-    };
-    fr.onerror = function () { status("Couldn't read that file."); };
-    fr.readAsText(file);
-  }
-
-  function ingest(data) {
-    var n = data.nodes.length, dims = data.dims || data.vectors[0].length;
-    var flat = new Float32Array(n * dims);
-    for (var i = 0; i < n; i++) {
-      var v = data.vectors[i];
-      for (var d = 0; d < dims; d++) flat[i * dims + d] = v[d];
-    }
-    G.normalizeRows(flat, n, dims);
-    S.nodes = data.nodes; S.flat = flat; S.dims = dims; S.n = n;
-    S.knn = null; S.sel = -1; S.focus = null; S.activeCluster = -1;
-    $("meta").textContent = n + " items · " + dims + " dims · " + (data.modelId || "unknown model");
-    $("dropzone").style.display = "none";
-    $("controls").style.display = "block";
-    runKNN();
-  }
-
-  /* ---------------------------------------------------------------- kNN */
-
-  function runKNN() {
-    var keep = parseInt($("kdims").value, 10);
-    var t = G.truncate(S.flat, S.n, S.dims, keep);
-    var K = Math.min(40, Math.max(20, S.n - 1));
-    var runner = G.makeKNNRunner(t.flat, S.n, t.dims, K);
-    var t0 = performance.now();
-    S.running = true;
-
-    function slice() {
-      var rows = S.n > 4000 ? 12 : 60;
-      var done = runner.runSlice(rows);
-      var pct = Math.round(runner.progress * 100);
-      status("Comparing every pair — " + pct + "%", true);
-      $("bar").style.width = pct + "%";
-      if (done) {
-        S.knn = runner.result();
-        $("bar").style.width = "0%";
-        S.running = false;
-        status("Similarities computed in " + ((performance.now() - t0) / 1000).toFixed(1) + "s");
-        initPositions();
-        rebuild();
-      } else {
-        setTimeout(slice, 0);
-      }
-    }
-    setTimeout(slice, 0);
-  }
-
-  function initPositions() {
-    var p = G.pca2(S.flat, S.n, S.dims, 30);
-    G.rescale(p.x, p.y, S.n, 900);
-    S.x = p.x; S.y = p.y;
-    fitView();
-  }
-
-  /* ------------------------------------------------------------ rebuild */
-
-  function rebuild() {
-    if (!S.knn) return;
-    var k = parseInt($("k").value, 10);
-    var res = parseFloat($("res").value);
-    var minSim = parseFloat($("minsim").value);
-    var mutual = $("mutual").checked;
-
-    S.edges = G.buildEdges(S.knn, S.n, { k: k, mutual: mutual, minSim: minSim, localScaling: true });
-    S.deg = G.degrees(S.n, S.edges);
-    var cl = G.louvain(S.n, S.edges, res);
-    S.clusters = cl.labels;
-    var texts = S.nodes.map(function (nd) { return nd.title + " " + (nd.abstract || "").slice(0, 200); });
-    S.labels = G.clusterLabels(cl.labels, cl.count, texts, 3);
-
-    var iso = 0;
-    for (var i = 0; i < S.n; i++) if (S.deg.count[i] === 0) iso++;
-    $("gstats").textContent = S.edges.count + " links · " + cl.count + " clusters · " + iso + " unlinked";
-    renderLegend(cl.count);
-    startLayout();
-  }
-
-  function startLayout() {
-    cancelAnimationFrame(S.anim);
-    var clusterCount = S.clusters ? (Math.max.apply(null, Array.from(S.clusters)) + 1) : 0;
-    S.layout = new G.Layout(S.n, S.edges, S.x, S.y, S.deg.count, {
-      repulsion: parseFloat($("spread").value),
-      gravity: parseFloat($("gravity").value),
-      attraction: 0.08,
-      cell: 60,
-      clusters: S.clusters,
-      clusterCount: clusterCount,
-      clusterPull: 0.03,
-      clusterSeparation: 320
-    });
-    var iters = 0, target = 400;
-    function tick() {
-      var budget = performance.now() + 12;
-      while (performance.now() < budget && iters < target) { S.layout.step(); iters++; }
-      draw();
-      $("bar").style.width = Math.round(iters / target * 100) + "%";
-      if (iters < target) {
-        status("Settling layout — iteration " + iters, true);
-        S.anim = requestAnimationFrame(tick);
-      } else {
-        $("bar").style.width = "0%";
-        status("Ready. Click a paper to inspect it; double-click to isolate its neighbourhood.");
-        fitView();
-        draw();
-      }
-    }
-    tick();
-  }
-
-  /* ------------------------------------------------------------- legend */
-
-  function renderLegend(count) {
-    var sizes = new Array(count).fill(0);
-    for (var i = 0; i < S.n; i++) sizes[S.clusters[i]]++;
-    var order = sizes.map(function (v, i) { return [i, v]; })
-      .sort(function (a, b) { return b[1] - a[1]; });
-    var html = "";
-    for (var q = 0; q < Math.min(order.length, 22); q++) {
-      var c = order[q][0];
-      html += '<button class="leg' + (S.activeCluster === c ? " on" : "") + '" data-c="' + c + '">' +
-        '<span class="sw" style="background:' + colorOf(c) + '"></span>' +
-        '<span class="lt">' + esc(S.labels[c]) + "</span>" +
-        '<span class="ln">' + order[q][1] + "</span></button>";
-    }
-    $("legend").innerHTML = html;
-    Array.prototype.forEach.call($("legend").querySelectorAll(".leg"), function (b) {
-      b.onclick = function () {
-        var c = parseInt(b.dataset.c, 10);
-        S.activeCluster = S.activeCluster === c ? -1 : c;
-        S.focus = null;
-        renderLegend(count); draw();
-      };
-    });
-  }
-
-  function colorOf(c) { return PALETTE[c % PALETTE.length]; }
-  function esc(s) {
-    return String(s).replace(/[&<>"]/g, function (m) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m];
-    });
-  }
-
-  /* -------------------------------------------------------------- view */
-
-  function fitView() {
-    if (!S.x) return;
-    var r = canvas.getBoundingClientRect();
-    var minx = Infinity, maxx = -Infinity, miny = Infinity, maxy = -Infinity;
-    for (var i = 0; i < S.n; i++) {
-      if (S.x[i] < minx) minx = S.x[i]; if (S.x[i] > maxx) maxx = S.x[i];
-      if (S.y[i] < miny) miny = S.y[i]; if (S.y[i] > maxy) maxy = S.y[i];
-    }
-    var w = (maxx - minx) || 1, h = (maxy - miny) || 1;
-    S.view.s = Math.min(r.width / (w * 1.15), r.height / (h * 1.15));
-    S.view.tx = r.width / 2 - ((minx + maxx) / 2) * S.view.s;
-    S.view.ty = r.height / 2 - ((miny + maxy) / 2) * S.view.s;
-  }
-
-  function sx(i) { return S.x[i] * S.view.s + S.view.tx; }
-  function sy(i) { return S.y[i] * S.view.s + S.view.ty; }
-
-  function visible(i) {
-    if (S.focus) return S.focus.has(i);
-    if (S.activeCluster >= 0) return S.clusters[i] === S.activeCluster;
-    return true;
-  }
-
-  /* -------------------------------------------------------------- draw */
-
-  function draw() {
-    if (!S.x) return;
-    var r = canvas.getBoundingClientRect();
-    ctx.clearRect(0, 0, r.width, r.height);
-    ctx.fillStyle = "#0b0d13";
-    ctx.fillRect(0, 0, r.width, r.height);
-
-    var nbrSet = null;
-    var hl = S.sel >= 0 ? S.sel : S.hover;
-    if (hl >= 0 && S.knn) {
-      nbrSet = new Set([hl]);
-      var K = S.knn.K, k = parseInt($("k").value, 10);
-      for (var p = 0; p < k; p++) {
-        var j = S.knn.nbr[hl * K + p];
-        if (j >= 0) nbrSet.add(j);
-      }
-    }
-
-    // edges — soft additive-style strokes; density itself reads as "strength"
-    if (S.drawEdges && S.edges) {
-      var E = S.edges, cap = 26000;
-      var stride = E.count > cap ? Math.ceil(E.count / cap) : 1;
-      ctx.lineWidth = 1;
-      ctx.globalCompositeOperation = "lighter";
-      for (var e = 0; e < E.count; e++) {
-        var a = E.u[e], b = E.v[e];
-        if (!visible(a) || !visible(b)) continue;
-        var strong = nbrSet && (nbrSet.has(a) && nbrSet.has(b));
-        if (stride > 1 && !strong && e % stride !== 0) continue;
-        var w = E.w[e];
-        if (nbrSet) ctx.strokeStyle = strong ? "rgba(255,255,255,0.38)" : "rgba(140,150,170,0.035)";
-        else ctx.strokeStyle = "rgba(150,165,200," + (0.035 + w * 0.16).toFixed(3) + ")";
-        ctx.beginPath();
-        ctx.moveTo(sx(a), sy(a));
-        ctx.lineTo(sx(b), sy(b));
-        ctx.stroke();
-      }
-      ctx.globalCompositeOperation = "source-over";
-    }
-
-    // nodes — soft glow halo + translucent fill + crisp core, connected-papers style
-    for (var i = 0; i < S.n; i++) {
-      var vis = visible(i);
-      var rad = 2.6 + Math.min(7, Math.sqrt(S.deg ? S.deg.count[i] : 1) * 1.1);
-      var dim = (nbrSet && !nbrSet.has(i)) || !vis;
-      var px = sx(i), py = sy(i);
-      var col = dim ? MUTED : colorOf(S.clusters ? S.clusters[i] : 0);
-
-      if (!dim) {
-        var glowR = rad * 3.2;
-        var glow = ctx.createRadialGradient(px, py, 0, px, py, glowR);
-        glow.addColorStop(0, hexToRgba(col, 0.35));
-        glow.addColorStop(1, hexToRgba(col, 0));
-        ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(px, py, glowR, 0, 6.2832);
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
-      }
-
-      ctx.beginPath();
-      ctx.arc(px, py, rad, 0, 6.2832);
-      ctx.fillStyle = hexToRgba(col, dim ? (vis ? 0.30 : 0.08) : 0.55);
-      ctx.fill();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = hexToRgba(col, dim ? (vis ? 0.4 : 0.1) : 0.95);
-      ctx.stroke();
-    }
-
-    // selection ring
-    if (S.sel >= 0) {
-      ctx.beginPath();
-      ctx.arc(sx(S.sel), sy(S.sel), 13, 0, 6.2832);
-      ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2; ctx.stroke();
-    }
-
-    // cluster names when zoomed out, titles when zoomed in
-    if (S.clusters) {
-      if (S.view.s < 0.55) {
-        var cx = {}, cy = {}, cn = {};
-        for (var q = 0; q < S.n; q++) {
-          if (!visible(q)) continue;
-          var c = S.clusters[q];
-          cx[c] = (cx[c] || 0) + sx(q); cy[c] = (cy[c] || 0) + sy(q); cn[c] = (cn[c] || 0) + 1;
+        function pick(mx, my) {
+          var best = -1,
+            bd = 18 * 18;
+          for (var i = 0; i < S.n; i++) {
+            if (!visible(i)) continue;
+            var dx = sx(i) - mx,
+              dy = sy(i) - my,
+              d = dx * dx + dy * dy;
+            if (d < bd) {
+              bd = d;
+              best = i;
+            }
+          }
+          return best;
         }
-        ctx.font = "600 11px ui-monospace, SFMono-Regular, Menlo, monospace";
-        ctx.textAlign = "center";
-        for (var key in cn) {
-          if (cn[key] < Math.max(3, S.n * 0.012)) continue;
-          var tx = cx[key] / cn[key], ty = cy[key] / cn[key];
-          var label = S.labels[key] || "";
-          ctx.fillStyle = "rgba(11,13,19,0.72)";
-          var wpx = ctx.measureText(label).width;
-          ctx.fillRect(tx - wpx / 2 - 5, ty - 9, wpx + 10, 15);
-          ctx.fillStyle = colorOf(parseInt(key, 10));
-          ctx.fillText(label, tx, ty + 2);
+
+        var drag = null, lastDragMoved = false;
+        canvas.addEventListener("mousedown", function (ev) {
+          drag = {
+            x: ev.offsetX,
+            y: ev.offsetY,
+            tx: S.view.tx,
+            ty: S.view.ty,
+            moved: false,
+          };
+        });
+        window.addEventListener("mouseup", function () {
+          lastDragMoved = !!(drag && drag.moved);
+          drag = null;
+        });
+        canvas.addEventListener("mousemove", function (ev) {
+          if (drag) {
+            var dx = ev.offsetX - drag.x,
+              dy = ev.offsetY - drag.y;
+            if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
+            S.view.tx = drag.tx + dx;
+            S.view.ty = drag.ty + dy;
+            draw();
+            return;
+          }
+          if (!S.x) return;
+          var h = pick(ev.offsetX, ev.offsetY);
+          if (h !== S.hover) {
+            S.hover = h;
+            canvas.style.cursor = h >= 0 ? "pointer" : "grab";
+            var tip = $("tip");
+            if (h >= 0) {
+              var nd = S.nodes[h];
+              tip.style.display = "block";
+              tip.style.left = ev.offsetX + 14 + "px";
+              tip.style.top = ev.offsetY + 12 + "px";
+              tip.innerHTML =
+                "<b>" +
+                esc(nd.title) +
+                "</b>" +
+                '<span class="sub">' +
+                esc([nd.author, nd.year].filter(Boolean).join(", ")) +
+                "</span>";
+            } else tip.style.display = "none";
+            if (S.sel < 0) draw();
+          }
+        });
+        canvas.addEventListener("mouseleave", function () {
+          $("tip").style.display = "none";
+        });
+
+        canvas.addEventListener("click", function (ev) {
+          if (lastDragMoved) { lastDragMoved = false; return; }
+          var h = pick(ev.offsetX, ev.offsetY);
+          S.sel = h;
+          showDetail(h);
+          draw();
+        });
+
+        canvas.addEventListener("dblclick", function (ev) {
+          var h = pick(ev.offsetX, ev.offsetY);
+          if (h < 0) {
+            S.focus = null;
+            draw();
+            return;
+          }
+          var set = new Set([h]),
+            frontier = [h];
+          for (var hop = 0; hop < 2; hop++) {
+            var next = [];
+            for (var f = 0; f < frontier.length; f++) {
+              var node = frontier[f];
+              for (var e = 0; e < S.edges.count; e++) {
+                if (S.edges.u[e] === node && !set.has(S.edges.v[e])) {
+                  set.add(S.edges.v[e]);
+                  next.push(S.edges.v[e]);
+                } else if (S.edges.v[e] === node && !set.has(S.edges.u[e])) {
+                  set.add(S.edges.u[e]);
+                  next.push(S.edges.u[e]);
+                }
+              }
+            }
+            frontier = next;
+          }
+          S.focus = set;
+          S.activeCluster = -1;
+          $("clearfocus").style.display = "inline-block";
+          status("Isolated " + set.size + " papers around this one.");
+          draw();
+        });
+
+        canvas.addEventListener(
+          "wheel",
+          function (ev) {
+            ev.preventDefault();
+            var f = Math.exp(-ev.deltaY * 0.0015);
+            var mx = ev.offsetX,
+              my = ev.offsetY;
+            S.view.tx = mx - (mx - S.view.tx) * f;
+            S.view.ty = my - (my - S.view.ty) * f;
+            S.view.s *= f;
+            draw();
+          },
+          { passive: false },
+        );
+
+        window.addEventListener("keydown", function (ev) {
+          if (ev.key === "Escape") {
+            S.focus = null;
+            S.sel = -1;
+            S.activeCluster = -1;
+            $("clearfocus").style.display = "none";
+            showDetail(-1);
+            if (S.clusters)
+              renderLegend(Math.max.apply(null, Array.from(S.clusters)) + 1);
+            draw();
+          }
+        });
+
+        /* -------------------------------------------------------------- detail */
+
+        function zoteroURI(nd) {
+          var lk = String(nd.libraryKey == null ? "" : nd.libraryKey);
+          var m = lk.match(/(\d+)/);
+          if (/group/i.test(lk) && m)
+            return "zotero://select/groups/" + m[1] + "/items/" + nd.id;
+          return "zotero://select/library/items/" + nd.id;
         }
-      } else {
-        ctx.font = "11px Inter, system-ui, sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(230,233,240,0.82)";
-        for (var t = 0; t < S.n; t++) {
-          if (!visible(t)) continue;
-          if (S.view.s < 1.4 && S.deg && S.deg.count[t] < 3) continue;
-          var title = S.nodes[t].title;
-          if (title.length > 46) title = title.slice(0, 44) + "…";
-          ctx.fillText(title, sx(t) + 9, sy(t) + 3.5);
+
+        function showDetail(i) {
+          var d = $("detail");
+          if (i < 0) {
+            d.innerHTML =
+              '<div class="micro">Selected paper</div>' +
+              '<p class="empty">Click a paper on the map to see its details and nearest neighbours here.</p>';
+            return;
+          }
+          var nd = S.nodes[i];
+          var K = S.knn.K,
+            k = K;
+          var rows = "";
+          for (var p = 0; p < k; p++) {
+            var j = S.knn.nbr[i * K + p];
+            if (j < 0) continue;
+            var s = S.knn.sim[i * K + p];
+            var pct = Math.max(0, Math.min(1, s));
+            rows +=
+              '<button class="nb" data-i="' +
+              j +
+              '">' +
+              '<span class="nbbar"><i style="width:' +
+              (pct * 100).toFixed(1) +
+              "%;background:" +
+              colorOf(S.clusters[j]) +
+              '"></i></span>' +
+              '<span class="nbv">' +
+              (s * 100).toFixed(0) +
+              "</span>" +
+              '<span class="nbt">' +
+              esc(S.nodes[j].title) +
+              "</span></button>";
+          }
+          d.innerHTML =
+            '<div class="micro">Selected paper</div>' +
+            "<h2>" +
+            esc(nd.title) +
+            "</h2>" +
+            '<div class="byline">' +
+            esc(
+              [nd.author, nd.year].filter(Boolean).join(" · ") || "no metadata",
+            ) +
+            "</div>" +
+            '<div class="chips"><span class="chip" style="border-color:' +
+            colorOf(S.clusters[i]) +
+            '">' +
+            esc(S.labels[S.clusters[i]]) +
+            "</span>" +
+            '<span class="chip">' +
+            S.deg.count[i] +
+            " links</span>" +
+            '<span class="chip">' +
+            nd.chunks +
+            " chunks</span></div>" +
+            (nd.abstract
+              ? '<p class="abs">' + esc(nd.abstract.slice(0, 320)) + "…</p>"
+              : "") +
+            '<a class="btn" href="' +
+            zoteroURI(nd) +
+            '">Open in Zotero</a>' +
+            '<div class="micro mt">Nearest by meaning (' +
+            k +
+            ")</div>" +
+            rows;
+          Array.prototype.forEach.call(d.querySelectorAll(".nb"), function (b) {
+            b.onclick = function () {
+              var j = parseInt(b.dataset.i, 10);
+              S.sel = j;
+              var r = canvas.getBoundingClientRect();
+              S.view.tx = r.width / 2 - S.x[j] * S.view.s;
+              S.view.ty = r.height / 2 - S.y[j] * S.view.s;
+              showDetail(j);
+              draw();
+            };
+          });
         }
-      }
-    }
-  }
 
-  function hexToRgba(hex, a) {
-    var v = parseInt(hex.slice(1), 16);
-    var r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
-    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
-  }
+        /* -------------------------------------------------------------- wiring */
 
-  /* --------------------------------------------------------- interaction */
+        $("file").addEventListener("change", function (e) {
+          if (e.target.files[0]) readFile(e.target.files[0]);
+        });
+        ["dragover", "drop"].forEach(function (t) {
+          window.addEventListener(t, function (e) {
+            e.preventDefault();
+          });
+        });
+        window.addEventListener("drop", function (e) {
+          if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+        });
 
-  function pick(mx, my) {
-    var best = -1, bd = 18 * 18;
-    for (var i = 0; i < S.n; i++) {
-      if (!visible(i)) continue;
-      var dx = sx(i) - mx, dy = sy(i) - my, d = dx * dx + dy * dy;
-      if (d < bd) { bd = d; best = i; }
-    }
-    return best;
-  }
+        ["k", "res", "minsim", "spread", "gravity"].forEach(function (id) {
+          $(id).addEventListener("input", function () {
+            $(id + "v").textContent = $(id).value;
+          });
+        });
+        $("apply").onclick = function () {
+          if (!S.running) rebuild();
+        };
+        $("mutual").onchange = function () {
+          if (!S.running) rebuild();
+        };
+        $("kdims").onchange = function () {
+          if (!S.running && S.flat) runKNN();
+        };
+        $("edgetoggle").onchange = function () {
+          S.drawEdges = $("edgetoggle").checked;
+          draw();
+        };
+        $("clearfocus").onclick = function () {
+          S.focus = null;
+          $("clearfocus").style.display = "none";
+          draw();
+        };
+        $("fit").onclick = function () {
+          fitView();
+          draw();
+        };
 
-  var drag = null;
-  canvas.addEventListener("mousedown", function (ev) {
-    drag = { x: ev.offsetX, y: ev.offsetY, tx: S.view.tx, ty: S.view.ty, moved: false };
-  });
-  window.addEventListener("mouseup", function () { drag = null; });
-  canvas.addEventListener("mousemove", function (ev) {
-    if (drag) {
-      var dx = ev.offsetX - drag.x, dy = ev.offsetY - drag.y;
-      if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
-      S.view.tx = drag.tx + dx; S.view.ty = drag.ty + dy;
-      draw();
-      return;
-    }
-    if (!S.x) return;
-    var h = pick(ev.offsetX, ev.offsetY);
-    if (h !== S.hover) {
-      S.hover = h;
-      canvas.style.cursor = h >= 0 ? "pointer" : "grab";
-      var tip = $("tip");
-      if (h >= 0) {
-        var nd = S.nodes[h];
-        tip.style.display = "block";
-        tip.style.left = (ev.offsetX + 14) + "px";
-        tip.style.top = (ev.offsetY + 12) + "px";
-        tip.innerHTML = "<b>" + esc(nd.title) + "</b>" +
-          '<span class="sub">' + esc([nd.author, nd.year].filter(Boolean).join(", ")) + "</span>";
-      } else tip.style.display = "none";
-      if (S.sel < 0) draw();
-    }
-  });
-  canvas.addEventListener("mouseleave", function () { $("tip").style.display = "none"; });
+        $("search").addEventListener("input", function () {
+          var q = $("search").value.trim().toLowerCase();
+          if (!q || !S.nodes) return;
+          for (var i = 0; i < S.n; i++) {
+            if (S.nodes[i].title.toLowerCase().indexOf(q) >= 0) {
+              S.sel = i;
+              var r = canvas.getBoundingClientRect();
+              S.view.tx = r.width / 2 - S.x[i] * S.view.s;
+              S.view.ty = r.height / 2 - S.y[i] * S.view.s;
+              showDetail(i);
+              draw();
+              return;
+            }
+          }
+        });
 
-  canvas.addEventListener("click", function (ev) {
-    if (drag && drag.moved) return;
-    var h = pick(ev.offsetX, ev.offsetY);
-    S.sel = h;
-    showDetail(h);
-    draw();
-  });
+        $("export").onclick = function () {
+          if (!S.clusters) return;
+          var out = {
+            generated: new Date().toISOString(),
+            params: {
+              k: +$("k").value,
+              resolution: +$("res").value,
+              mutual: $("mutual").checked,
+              minSim: +$("minsim").value,
+              dims: +$("kdims").value,
+            },
+            nodes: [],
+          };
+          for (var i = 0; i < S.n; i++) {
+            out.nodes.push({
+              id: S.nodes[i].id,
+              x: +S.x[i].toFixed(2),
+              y: +S.y[i].toFixed(2),
+              cluster: S.clusters[i],
+              label: S.labels[S.clusters[i]],
+            });
+          }
+          var blob = new Blob([JSON.stringify(out)], {
+            type: "application/json",
+          });
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "zotgraph_layout.json";
+          a.click();
+        };
 
-  canvas.addEventListener("dblclick", function (ev) {
-    var h = pick(ev.offsetX, ev.offsetY);
-    if (h < 0) { S.focus = null; draw(); return; }
-    var set = new Set([h]), frontier = [h];
-    for (var hop = 0; hop < 2; hop++) {
-      var next = [];
-      for (var f = 0; f < frontier.length; f++) {
-        var node = frontier[f];
-        for (var e = 0; e < S.edges.count; e++) {
-          if (S.edges.u[e] === node && !set.has(S.edges.v[e])) { set.add(S.edges.v[e]); next.push(S.edges.v[e]); }
-          else if (S.edges.v[e] === node && !set.has(S.edges.u[e])) { set.add(S.edges.u[e]); next.push(S.edges.u[e]); }
-        }
-      }
-      frontier = next;
-    }
-    S.focus = set;
-    S.activeCluster = -1;
-    $("clearfocus").style.display = "inline-block";
-    status("Isolated " + set.size + " papers around this one.");
-    draw();
-  });
-
-  canvas.addEventListener("wheel", function (ev) {
-    ev.preventDefault();
-    var f = Math.exp(-ev.deltaY * 0.0015);
-    var mx = ev.offsetX, my = ev.offsetY;
-    S.view.tx = mx - (mx - S.view.tx) * f;
-    S.view.ty = my - (my - S.view.ty) * f;
-    S.view.s *= f;
-    draw();
-  }, { passive: false });
-
-  window.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape") {
-      S.focus = null; S.sel = -1; S.activeCluster = -1;
-      $("clearfocus").style.display = "none";
-      $("detail").classList.remove("open");
-      if (S.clusters) renderLegend(Math.max.apply(null, Array.from(S.clusters)) + 1);
-      draw();
-    }
-  });
-
-  /* -------------------------------------------------------------- detail */
-
-  function zoteroURI(nd) {
-    var lk = String(nd.libraryKey == null ? "" : nd.libraryKey);
-    var m = lk.match(/(\d+)/);
-    if (/group/i.test(lk) && m) return "zotero://select/groups/" + m[1] + "/items/" + nd.id;
-    return "zotero://select/library/items/" + nd.id;
-  }
-
-  function showDetail(i) {
-    var d = $("detail");
-    if (i < 0) { d.classList.remove("open"); return; }
-    var nd = S.nodes[i];
-    var K = S.knn.K, k = Math.min(8, parseInt($("k").value, 10));
-    var rows = "";
-    for (var p = 0; p < k; p++) {
-      var j = S.knn.nbr[i * K + p];
-      if (j < 0) continue;
-      var s = S.knn.sim[i * K + p];
-      var pct = Math.max(0, Math.min(1, s));
-      rows += '<button class="nb" data-i="' + j + '">' +
-        '<span class="nbbar"><i style="width:' + (pct * 100).toFixed(1) + '%;background:' + colorOf(S.clusters[j]) + '"></i></span>' +
-        '<span class="nbv">' + (s * 100).toFixed(0) + "</span>" +
-        '<span class="nbt">' + esc(S.nodes[j].title) + "</span></button>";
-    }
-    d.innerHTML =
-      '<div class="micro">Selected paper</div>' +
-      "<h2>" + esc(nd.title) + "</h2>" +
-      '<div class="byline">' + esc([nd.author, nd.year].filter(Boolean).join(" · ") || "no metadata") + "</div>" +
-      '<div class="chips"><span class="chip" style="border-color:' + colorOf(S.clusters[i]) + '">' +
-      esc(S.labels[S.clusters[i]]) + "</span>" +
-      '<span class="chip">' + S.deg.count[i] + " links</span>" +
-      '<span class="chip">' + nd.chunks + " chunks</span></div>" +
-      (nd.abstract ? '<p class="abs">' + esc(nd.abstract.slice(0, 320)) + "…</p>" : "") +
-      '<a class="btn" href="' + zoteroURI(nd) + '">Open in Zotero</a>' +
-      '<div class="micro mt">Nearest by meaning</div>' + rows;
-    d.classList.add("open");
-    Array.prototype.forEach.call(d.querySelectorAll(".nb"), function (b) {
-      b.onclick = function () {
-        var j = parseInt(b.dataset.i, 10);
-        S.sel = j;
-        var r = canvas.getBoundingClientRect();
-        S.view.tx = r.width / 2 - S.x[j] * S.view.s;
-        S.view.ty = r.height / 2 - S.y[j] * S.view.s;
-        showDetail(j); draw();
-      };
-    });
-  }
-
-  /* -------------------------------------------------------------- wiring */
-
-  $("file").addEventListener("change", function (e) {
-    if (e.target.files[0]) readFile(e.target.files[0]);
-  });
-  ["dragover", "drop"].forEach(function (t) {
-    window.addEventListener(t, function (e) { e.preventDefault(); });
-  });
-  window.addEventListener("drop", function (e) {
-    if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
-  });
-
-  ["k", "res", "minsim", "spread", "gravity"].forEach(function (id) {
-    $(id).addEventListener("input", function () {
-      $(id + "v").textContent = $(id).value;
-    });
-  });
-  $("apply").onclick = function () { if (!S.running) rebuild(); };
-  $("mutual").onchange = function () { if (!S.running) rebuild(); };
-  $("kdims").onchange = function () { if (!S.running && S.flat) runKNN(); };
-  $("edgetoggle").onchange = function () { S.drawEdges = $("edgetoggle").checked; draw(); };
-  $("clearfocus").onclick = function () {
-    S.focus = null; $("clearfocus").style.display = "none"; draw();
-  };
-  $("fit").onclick = function () { fitView(); draw(); };
-
-  $("search").addEventListener("input", function () {
-    var q = $("search").value.trim().toLowerCase();
-    if (!q || !S.nodes) return;
-    for (var i = 0; i < S.n; i++) {
-      if (S.nodes[i].title.toLowerCase().indexOf(q) >= 0) {
-        S.sel = i;
-        var r = canvas.getBoundingClientRect();
-        S.view.tx = r.width / 2 - S.x[i] * S.view.s;
-        S.view.ty = r.height / 2 - S.y[i] * S.view.s;
-        showDetail(i); draw();
-        return;
-      }
-    }
-  });
-
-  $("export").onclick = function () {
-    if (!S.clusters) return;
-    var out = { generated: new Date().toISOString(), params: {
-      k: +$("k").value, resolution: +$("res").value, mutual: $("mutual").checked,
-      minSim: +$("minsim").value, dims: +$("kdims").value
-    }, nodes: [] };
-    for (var i = 0; i < S.n; i++) {
-      out.nodes.push({
-        id: S.nodes[i].id, x: +S.x[i].toFixed(2), y: +S.y[i].toFixed(2),
-        cluster: S.clusters[i], label: S.labels[S.clusters[i]]
-      });
-    }
-    var blob = new Blob([JSON.stringify(out)], { type: "application/json" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "zotgraph_layout.json";
-    a.click();
-  };
-
-  resize();
-  status("Drop graph_input.json anywhere on this window to begin.");
-})();
-</script>
-</body>
+        resize();
+        status("Drop graph_input.json anywhere on this window to begin.");
+      })();
+    </script>
+  </body>
 </html>
