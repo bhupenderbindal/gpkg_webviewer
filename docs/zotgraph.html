@@ -10,6 +10,7 @@
     --rule:#d3d8e1; --accent:#a4343a; --accent-soft:#f3e3e4;
     --ui:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --stage-bg:#0b0d13;
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0}
@@ -36,15 +37,17 @@
 
   #side{grid-area:side;background:var(--panel);border-right:1px solid var(--rule);
         overflow-y:auto;padding:16px}
-  #stage{grid-area:stage;position:relative;overflow:hidden}
+  #stage{grid-area:stage;position:relative;overflow:hidden;background:var(--stage-bg)}
   canvas{display:block;cursor:grab}
 
   #dropzone{position:absolute;inset:0;display:flex;flex-direction:column;
-            align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px}
-  #dropzone h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:0;max-width:20ch;line-height:1.2}
-  #dropzone p{max-width:46ch;font-size:13.5px;line-height:1.6;color:var(--ink-2);margin:0}
-  #dropzone code{font-family:var(--mono);font-size:12px;background:var(--panel);
-                 padding:2px 6px;border:1px solid var(--rule)}
+            align-items:center;justify-content:center;gap:14px;text-align:center;padding:32px;
+            color:#e6e9f0}
+  #dropzone .micro{color:#8890a4}
+  #dropzone h1{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:0;max-width:20ch;line-height:1.2;color:#f2f4f8}
+  #dropzone p{max-width:46ch;font-size:13.5px;line-height:1.6;color:#9aa2b5;margin:0}
+  #dropzone code{font-family:var(--mono);font-size:12px;background:#1a1d27;color:#dfe3ec;
+                 padding:2px 6px;border:1px solid #333849}
   .file{display:inline-block;border:1px solid var(--ink);padding:9px 18px;font-size:13px;
         cursor:pointer;background:var(--ink);color:#fff}
   .file input{display:none}
@@ -533,7 +536,13 @@
     this.n = n; this.edges = edges; this.x = x; this.y = y;
     this.deg = deg;
     this.dx = new Float32Array(n); this.dy = new Float32Array(n);
-    this.opts = Object.assign({ repulsion: 1.0, attraction: 0.08, gravity: 0.02, cell: 60 }, opts || {});
+    this.opts = Object.assign({ repulsion: 1.0, attraction: 0.08, gravity: 0.02, cell: 60,
+      clusters: null, clusterCount: 0, clusterPull: 0.02 }, opts || {});
+    this.cx = null; this.cy = null;
+    if (this.opts.clusters && this.opts.clusterCount) {
+      this.cx = new Float32Array(this.opts.clusterCount);
+      this.cy = new Float32Array(this.opts.clusterCount);
+    }
     this.iter = 0;
   }
 
@@ -551,11 +560,15 @@
       if (!arr) { arr = []; buckets.set(key, arr); }
       arr.push(i);
     }
-    // repulsion within 3x3 neighbourhood
+    // repulsion within a moderate neighbourhood — wide enough that local packing
+    // doesn't snap into a lattice; cluster-level separation comes from the
+    // centroid pull below rather than brute-force long-range repulsion.
+    const reach = 3;
+    const maxD2 = cell * cell * reach * reach;
     buckets.forEach(function (arr, key) {
       const cx = Math.floor(key / 100000), cy = key % 100000;
-      for (let ox = -1; ox <= 1; ox++) {
-        for (let oy = -1; oy <= 1; oy++) {
+      for (let ox = -reach; ox <= reach; ox++) {
+        for (let oy = -reach; oy <= reach; oy++) {
           const other = buckets.get((cx + ox) * 100000 + (cy + oy));
           if (!other) continue;
           for (let a = 0; a < arr.length; a++) {
@@ -566,7 +579,7 @@
               let ddx = x[i] - x[j], ddy = y[i] - y[j];
               let d2 = ddx * ddx + ddy * ddy;
               if (d2 < 1e-4) { ddx = (i % 7) * 0.01 + 0.01; ddy = (j % 5) * 0.01 + 0.01; d2 = ddx * ddx + ddy * ddy; }
-              if (d2 > cell * cell * 9) continue;
+              if (d2 > maxD2) continue;
               const d = Math.sqrt(d2);
               const f = o.repulsion * (1 + this.deg[i]) * (1 + this.deg[j]) / d;
               const ux = ddx / d, uy = ddy / d;
@@ -588,6 +601,46 @@
       const ux = ddx / d, uy = ddy / d;
       dx[i] += ux * f; dy[i] += uy * f;
       dx[j] -= ux * f; dy[j] -= uy * f;
+    }
+
+    // cluster cohesion + separation: pull each node toward its own cluster's
+    // centroid, and push cluster centroids apart from one another — together
+    // these turn Louvain communities into distinct, spread-out blobs instead
+    // of a single packed mass.
+    const clusters = o.clusters, cx = this.cx, cy = this.cy;
+    if (clusters && cx) {
+      const nc = cx.length;
+      cx.fill(0); cy.fill(0);
+      const cnt = new Int32Array(nc);
+      for (let i = 0; i < n; i++) { const c = clusters[i]; cx[c] += x[i]; cy[c] += y[i]; cnt[c]++; }
+      for (let c = 0; c < nc; c++) if (cnt[c] > 0) { cx[c] /= cnt[c]; cy[c] /= cnt[c]; }
+
+      // desired target separation grows with the size of the two clusters,
+      // so big communities push a lot further apart than two small ones
+      const ccx = new Float32Array(nc), ccy = new Float32Array(nc);
+      const minSep = o.clusterSeparation || 260;
+      for (let a = 0; a < nc; a++) {
+        if (cnt[a] === 0) continue;
+        for (let b = a + 1; b < nc; b++) {
+          if (cnt[b] === 0) continue;
+          let ddx = cx[a] - cx[b], ddy = cy[a] - cy[b];
+          let d2 = ddx * ddx + ddy * ddy;
+          if (d2 < 1e-4) { ddx = (a % 7) * 0.5 + 0.5; ddy = (b % 5) * 0.5 + 0.5; d2 = ddx * ddx + ddy * ddy; }
+          const d = Math.sqrt(d2);
+          const want = minSep * Math.sqrt((cnt[a] + cnt[b]) / 2);
+          if (d >= want) continue;              // already far enough apart
+          const f = (want - d) * 0.5;            // spring-style push, not 1/d decay
+          const ux = ddx / d, uy = ddy / d;
+          ccx[a] += ux * f; ccy[a] += uy * f;
+          ccx[b] -= ux * f; ccy[b] -= uy * f;
+        }
+      }
+
+      for (let i = 0; i < n; i++) {
+        const c = clusters[i];
+        dx[i] += (cx[c] - x[i]) * o.clusterPull + ccx[c];
+        dy[i] += (cy[c] - y[i]) * o.clusterPull + ccy[c];
+      }
     }
 
     // gravity + integrate with cooling
@@ -672,10 +725,10 @@
   "use strict";
   var G = window.GraphCore;
 
-  var PALETTE = ["#c0392b", "#2e86c1", "#1e8449", "#8e44ad", "#d68910", "#16a085",
-    "#c2185b", "#5d6d7e", "#7d6608", "#2874a6", "#b03a2e", "#117864",
-    "#6c3483", "#a04000", "#1f618d", "#935116"];
-  var MUTED = "#c6cbd4";
+  var PALETTE = ["#e0574a", "#4fa3e3", "#3fb87f", "#b47fe0", "#e0a83f", "#3fc6c6",
+    "#e0568f", "#9aa5c9", "#d1b23f", "#5c9be0", "#e0704a", "#3fbfa0",
+    "#a682e0", "#e0913f", "#5b8fd6", "#c9a24f"];
+  var MUTED = "#3a3f4d";
 
   var S = {
     nodes: null, flat: null, dims: 0, n: 0,
@@ -803,11 +856,16 @@
 
   function startLayout() {
     cancelAnimationFrame(S.anim);
+    var clusterCount = S.clusters ? (Math.max.apply(null, Array.from(S.clusters)) + 1) : 0;
     S.layout = new G.Layout(S.n, S.edges, S.x, S.y, S.deg.count, {
       repulsion: parseFloat($("spread").value),
       gravity: parseFloat($("gravity").value),
       attraction: 0.08,
-      cell: 60
+      cell: 60,
+      clusters: S.clusters,
+      clusterCount: clusterCount,
+      clusterPull: 0.03,
+      clusterSeparation: 320
     });
     var iters = 0, target = 400;
     function tick() {
@@ -892,6 +950,8 @@
     if (!S.x) return;
     var r = canvas.getBoundingClientRect();
     ctx.clearRect(0, 0, r.width, r.height);
+    ctx.fillStyle = "#0b0d13";
+    ctx.fillRect(0, 0, r.width, r.height);
 
     var nbrSet = null;
     var hl = S.sel >= 0 ? S.sel : S.hover;
@@ -904,44 +964,63 @@
       }
     }
 
-    // edges
+    // edges — soft additive-style strokes; density itself reads as "strength"
     if (S.drawEdges && S.edges) {
       var E = S.edges, cap = 26000;
       var stride = E.count > cap ? Math.ceil(E.count / cap) : 1;
       ctx.lineWidth = 1;
+      ctx.globalCompositeOperation = "lighter";
       for (var e = 0; e < E.count; e++) {
         var a = E.u[e], b = E.v[e];
         if (!visible(a) || !visible(b)) continue;
         var strong = nbrSet && (nbrSet.has(a) && nbrSet.has(b));
         if (stride > 1 && !strong && e % stride !== 0) continue;
         var w = E.w[e];
-        if (nbrSet) ctx.strokeStyle = strong ? "rgba(20,22,29,0.55)" : "rgba(150,157,170,0.10)";
-        else ctx.strokeStyle = "rgba(120,128,143," + (0.06 + w * 0.30).toFixed(3) + ")";
+        if (nbrSet) ctx.strokeStyle = strong ? "rgba(255,255,255,0.38)" : "rgba(140,150,170,0.035)";
+        else ctx.strokeStyle = "rgba(150,165,200," + (0.035 + w * 0.16).toFixed(3) + ")";
         ctx.beginPath();
         ctx.moveTo(sx(a), sy(a));
         ctx.lineTo(sx(b), sy(b));
         ctx.stroke();
       }
+      ctx.globalCompositeOperation = "source-over";
     }
 
-    // nodes
+    // nodes — soft glow halo + translucent fill + crisp core, connected-papers style
     for (var i = 0; i < S.n; i++) {
       var vis = visible(i);
       var rad = 2.6 + Math.min(7, Math.sqrt(S.deg ? S.deg.count[i] : 1) * 1.1);
       var dim = (nbrSet && !nbrSet.has(i)) || !vis;
+      var px = sx(i), py = sy(i);
+      var col = dim ? MUTED : colorOf(S.clusters ? S.clusters[i] : 0);
+
+      if (!dim) {
+        var glowR = rad * 3.2;
+        var glow = ctx.createRadialGradient(px, py, 0, px, py, glowR);
+        glow.addColorStop(0, hexToRgba(col, 0.35));
+        glow.addColorStop(1, hexToRgba(col, 0));
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(px, py, glowR, 0, 6.2832);
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+      }
+
       ctx.beginPath();
-      ctx.arc(sx(i), sy(i), rad, 0, 6.2832);
-      ctx.fillStyle = dim ? MUTED : colorOf(S.clusters ? S.clusters[i] : 0);
-      ctx.globalAlpha = dim ? (vis ? 0.45 : 0.12) : 1;
+      ctx.arc(px, py, rad, 0, 6.2832);
+      ctx.fillStyle = hexToRgba(col, dim ? (vis ? 0.30 : 0.08) : 0.55);
       ctx.fill();
-      ctx.globalAlpha = 1;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = hexToRgba(col, dim ? (vis ? 0.4 : 0.1) : 0.95);
+      ctx.stroke();
     }
 
     // selection ring
     if (S.sel >= 0) {
       ctx.beginPath();
       ctx.arc(sx(S.sel), sy(S.sel), 13, 0, 6.2832);
-      ctx.strokeStyle = "#a4343a"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 2; ctx.stroke();
     }
 
     // cluster names when zoomed out, titles when zoomed in
@@ -959,7 +1038,7 @@
           if (cn[key] < Math.max(3, S.n * 0.012)) continue;
           var tx = cx[key] / cn[key], ty = cy[key] / cn[key];
           var label = S.labels[key] || "";
-          ctx.fillStyle = "rgba(255,255,255,0.82)";
+          ctx.fillStyle = "rgba(11,13,19,0.72)";
           var wpx = ctx.measureText(label).width;
           ctx.fillRect(tx - wpx / 2 - 5, ty - 9, wpx + 10, 15);
           ctx.fillStyle = colorOf(parseInt(key, 10));
@@ -968,7 +1047,7 @@
       } else {
         ctx.font = "11px Inter, system-ui, sans-serif";
         ctx.textAlign = "left";
-        ctx.fillStyle = "rgba(20,22,29,0.78)";
+        ctx.fillStyle = "rgba(230,233,240,0.82)";
         for (var t = 0; t < S.n; t++) {
           if (!visible(t)) continue;
           if (S.view.s < 1.4 && S.deg && S.deg.count[t] < 3) continue;
@@ -978,6 +1057,12 @@
         }
       }
     }
+  }
+
+  function hexToRgba(hex, a) {
+    var v = parseInt(hex.slice(1), 16);
+    var r = (v >> 16) & 255, g = (v >> 8) & 255, b = v & 255;
+    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
   }
 
   /* --------------------------------------------------------- interaction */
