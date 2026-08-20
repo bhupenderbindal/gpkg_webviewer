@@ -320,14 +320,39 @@
         position: absolute;
         top: 14px;
         right: 14px;
-        width: 330px;
+        width: 460px;
+        min-width: 280px;
+        max-width: calc(100% - 60px);
         max-height: calc(100% - 28px);
         overflow-y: auto;
         background: var(--panel);
         border: 1px solid var(--rule);
-        padding: 16px;
+        padding: 16px 16px 16px 20px;
         display: block;
         box-shadow: 0 6px 26px rgba(20, 22, 29, 0.1);
+      }
+      #detailResize {
+        position: absolute;
+        top: 14px;
+        height: calc(100% - 28px);
+        width: 11px;
+        margin-left: -6px;
+        cursor: ew-resize;
+        touch-action: none;
+        z-index: 6;
+      }
+      #detailResize::after {
+        content: "";
+        position: absolute;
+        left: 5px;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: var(--rule);
+      }
+      #detailResize:hover::after,
+      #detailResize.active::after {
+        background: var(--accent);
       }
       #detail .empty {
         font-size: 12.5px;
@@ -573,6 +598,7 @@
           here.
         </p>
       </div>
+      <div id="detailResize" style="display: none"></div>
       <div id="dropzone">
         <div class="micro">Step two of three</div>
         <h1>Drop your exported library here</h1>
@@ -1443,6 +1469,8 @@
           $("dropzone").style.display = "none";
           $("controls").style.display = "block";
           $("detail").style.display = "block";
+          $("detailResize").style.display = "block";
+          positionDetailResize();
           runKNN();
         }
 
@@ -2078,6 +2106,37 @@
           fitView();
           draw();
         };
+
+        /* ------------------------------------------------------- detail resize */
+
+        function positionDetailResize() {
+          var d = $("detail"), h = $("detailResize");
+          var r = d.getBoundingClientRect(), sr = canvas.parentNode.getBoundingClientRect();
+          h.style.left = (r.left - sr.left) + "px";
+        }
+        window.addEventListener("resize", positionDetailResize);
+
+        (function () {
+          var h = $("detailResize"), d = $("detail");
+          var dragging = null;
+          h.addEventListener("mousedown", function (ev) {
+            ev.preventDefault();
+            dragging = { startX: ev.clientX, startW: d.getBoundingClientRect().width };
+            h.classList.add("active");
+          });
+          window.addEventListener("mousemove", function (ev) {
+            if (!dragging) return;
+            var delta = dragging.startX - ev.clientX;
+            var w = dragging.startW + delta;
+            var min = parseFloat(getComputedStyle(d).minWidth) || 280;
+            var max = canvas.parentNode.getBoundingClientRect().width - 60;
+            d.style.width = Math.max(min, Math.min(max, w)) + "px";
+            positionDetailResize();
+          });
+          window.addEventListener("mouseup", function () {
+            if (dragging) { dragging = null; h.classList.remove("active"); }
+          });
+        })();
 
         $("search").addEventListener("input", function () {
           var q = $("search").value.trim().toLowerCase();
