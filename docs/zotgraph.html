@@ -123,10 +123,25 @@
         position: relative;
         overflow: hidden;
         background: var(--stage-bg);
+        display: flex;
+      }
+      #stage.split #cv {
+        width: 50%;
+        border-right: 1px solid var(--rule);
+      }
+      #stage.split #cv2 {
+        width: 50%;
+      }
+      #cv2 {
+        display: none;
+      }
+      #stage.split #cv2 {
+        display: block;
       }
       canvas {
         display: block;
         cursor: grab;
+        width: 100%;
       }
 
       #dropzone {
@@ -482,6 +497,18 @@
         </div>
 
         <div class="grp">
+          <div class="micro">Graph</div>
+          <p class="hint">What draws a line between two papers.</p>
+          <select id="edgesource">
+            <option value="embedding">Embeddings (semantic similarity)</option>
+            <option value="tags">Shared tags</option>
+            <option value="authors">Shared authors</option>
+            <option value="collections">Shared collections</option>
+            <option value="relations">Manual relations</option>
+          </select>
+        </div>
+
+        <div class="grp" id="linkingGrp">
           <div class="micro">Linking</div>
           <label class="row">Neighbours per paper <var id="kv">10</var></label>
           <input type="range" id="k" min="3" max="70" value="10" step="1" />
@@ -529,6 +556,27 @@
         </div>
 
         <div class="grp">
+          <div class="micro">Paint</div>
+          <p class="hint">What paints a dot — independent of the graph above.</p>
+          <label class="row">Color by</label>
+          <select id="colorby">
+            <option value="cluster">Cluster (topic)</option>
+            <option value="degree">Degree (links)</option>
+            <option value="year">Year</option>
+            <option value="type">Item type</option>
+            <option value="read">Read state</option>
+            <option value="annotations">Annotation count</option>
+          </select>
+          <label class="row">Size by</label>
+          <select id="sizeby">
+            <option value="degree">Degree (links)</option>
+            <option value="year">Year</option>
+            <option value="annotations">Annotation count</option>
+            <option value="constant">Constant</option>
+          </select>
+        </div>
+
+        <div class="grp">
           <div class="micro">Layout</div>
           <label class="row">Spread <var id="spreadv">1</var></label>
           <input
@@ -560,7 +608,7 @@
         </div>
 
         <div class="grp">
-          <div class="micro">Comparison detail</div>
+          <div class="micro">Embedding detail</div>
           <select id="kdims">
             <option value="768" selected>Full 768 dimensions</option>
             <option value="384">384 — roughly twice as fast</option>
@@ -568,8 +616,29 @@
           </select>
           <p class="hint">
             Shortening the vectors speeds up the all-pairs comparison on large
-            libraries, at some cost to accuracy.
+            libraries, at some cost to accuracy. Only applies to the
+            Embeddings graph.
           </p>
+        </div>
+
+        <div class="grp">
+          <div class="micro">Compare</div>
+          <select id="comparemode">
+            <option value="single">Single graph</option>
+            <option value="overlay">Overlay two graphs</option>
+            <option value="split">Split view</option>
+          </select>
+          <label class="row" id="secondsourceRow" style="display: none"
+            >Second graph</label
+          >
+          <select id="secondsource" style="display: none">
+            <option value="embedding">Embeddings (semantic similarity)</option>
+            <option value="tags">Shared tags</option>
+            <option value="authors">Shared authors</option>
+            <option value="collections">Shared collections</option>
+            <option value="relations">Manual relations</option>
+          </select>
+          <p class="hint" id="agreement"></p>
         </div>
 
         <div class="grp">
@@ -589,6 +658,7 @@
 
     <main id="stage">
       <canvas id="cv"></canvas>
+      <canvas id="cv2"></canvas>
       <div id="tip"></div>
       <button id="clearfocus">Show the whole library</button>
       <div id="detail" style="display: none">
@@ -797,6 +867,141 @@
             cnt[edges.v[e]]++;
           }
           return { weighted: deg, count: cnt };
+        }
+
+        /* ------------------------------------------------- non-embedding edges */
+
+        /* Shared co-occurrence over an index-list node field (tags/authors/collections).
+     Weight between two papers = sum over shared indices of idf(idx) = log(1+N/df[idx]),
+     so rare, specific tags/authors/collections count for more than ubiquitous ones.
+     Built via inverted postings lists to avoid O(n^2) pair enumeration. */
+        function coOccurrenceEdges(nodes, field, dfArr, opts) {
+          opts = opts || {};
+          const n = nodes.length;
+          const N = n || 1;
+          const postings = new Map(); // idx -> [paper indices]
+          for (let i = 0; i < n; i++) {
+            const idxs = nodes[i][field] || [];
+            for (let t = 0; t < idxs.length; t++) {
+              const idx = idxs[t];
+              let list = postings.get(idx);
+              if (!list) postings.set(idx, (list = []));
+              list.push(i);
+            }
+          }
+          const wmap = new Map(); // "u*n+v" -> accumulated weight
+          postings.forEach(function (list, idx) {
+            const df = dfArr && dfArr[idx] ? dfArr[idx] : list.length;
+            const idf = Math.log(1 + N / Math.max(1, df));
+            for (let a = 0; a < list.length; a++) {
+              for (let b = a + 1; b < list.length; b++) {
+                const u = list[a],
+                  v = list[b];
+                const key = u * n + v;
+                wmap.set(key, (wmap.get(key) || 0) + idf);
+              }
+            }
+          });
+
+          const minShared = opts.minShared || 1;
+          const shared = new Map();
+          if (minShared > 1) {
+            postings.forEach(function (list) {
+              for (let a = 0; a < list.length; a++) {
+                for (let b = a + 1; b < list.length; b++) {
+                  const key = list[a] * n + list[b];
+                  shared.set(key, (shared.get(key) || 0) + 1);
+                }
+              }
+            });
+          }
+
+          const u = [],
+            v = [],
+            w = [];
+          wmap.forEach(function (weight, key) {
+            if (minShared > 1 && (shared.get(key) || 0) < minShared) return;
+            u.push(Math.floor(key / n));
+            v.push(key % n);
+            w.push(weight);
+          });
+
+          let maxW = 0;
+          for (let e = 0; e < w.length; e++) if (w[e] > maxW) maxW = w[e];
+          if (maxW > 0) for (let e = 0; e < w.length; e++) w[e] /= maxW;
+
+          return {
+            u: Int32Array.from(u),
+            v: Int32Array.from(v),
+            w: Float32Array.from(w),
+            count: w.length,
+          };
+        }
+
+        function buildTagEdges(nodes, vocab, df, opts) {
+          return coOccurrenceEdges(nodes, "t", df && df.tags, opts);
+        }
+
+        function buildAuthorEdges(nodes, vocab, df, opts) {
+          return coOccurrenceEdges(nodes, "a", df && df.authors, opts);
+        }
+
+        function buildCollectionEdges(nodes, vocab, df, opts) {
+          return coOccurrenceEdges(nodes, "c", df && df.collections, opts);
+        }
+
+        /* node.r entries are already integer indices into nodes[] — a direct,
+     symmetric relation edge list. Weight is uniform (1); dedup symmetric pairs. */
+        function buildRelationEdges(nodes, opts) {
+          const n = nodes.length;
+          const seen = new Set();
+          const u = [],
+            v = [],
+            w = [];
+          for (let i = 0; i < n; i++) {
+            const rel = nodes[i].r || [];
+            for (let t = 0; t < rel.length; t++) {
+              const j = rel[t];
+              if (j < 0 || j >= n || j === i) continue;
+              const a = Math.min(i, j),
+                b = Math.max(i, j);
+              const key = a * n + b;
+              if (seen.has(key)) continue;
+              seen.add(key);
+              u.push(a);
+              v.push(b);
+              w.push(1);
+            }
+          }
+          return {
+            u: Int32Array.from(u),
+            v: Int32Array.from(v),
+            w: Float32Array.from(w),
+            count: w.length,
+          };
+        }
+
+        /* Edge-set agreement between two graphs: |A ∩ B| / |A ∪ B|, on canonicalized
+     undirected pair keys. O(|A|+|B|). */
+        function edgeJaccard(edgesA, edgesB, n) {
+          const keyOf = function (u, v) {
+            return Math.min(u, v) * n + Math.max(u, v);
+          };
+          const setA = new Set();
+          for (let e = 0; e < edgesA.count; e++)
+            setA.add(keyOf(edgesA.u[e], edgesA.v[e]));
+          const setB = new Set();
+          for (let e = 0; e < edgesB.count; e++)
+            setB.add(keyOf(edgesB.u[e], edgesB.v[e]));
+          if (setA.size === 0 && setB.size === 0) return 0;
+          const small = setA.size <= setB.size ? setA : setB;
+          const big = setA.size <= setB.size ? setB : setA;
+          let inter = 0;
+          small.forEach(function (key) {
+            if (big.has(key)) inter++;
+          });
+          const union = setA.size + setB.size - inter;
+          return union > 0 ? inter / union : 0;
         }
 
         /* ------------------------------------------------------------- Louvain */
@@ -1335,6 +1540,11 @@
           truncate: truncate,
           makeKNNRunner: makeKNNRunner,
           buildEdges: buildEdges,
+          buildTagEdges: buildTagEdges,
+          buildAuthorEdges: buildAuthorEdges,
+          buildCollectionEdges: buildCollectionEdges,
+          buildRelationEdges: buildRelationEdges,
+          edgeJaccard: edgeJaccard,
           degrees: degrees,
           louvain: louvain,
           pca2: pca2,
@@ -1370,12 +1580,56 @@
         ];
         var MUTED = "#3a3f4d";
 
+        var SOURCES = ["embedding", "tags", "authors", "collections", "relations"];
+        var SOURCE_LABEL = {
+          embedding: "Embeddings",
+          tags: "Shared tags",
+          authors: "Shared authors",
+          collections: "Shared collections",
+          relations: "Manual relations",
+        };
+
+        function emptyGraph() {
+          return {
+            built: false,
+            edges: null,
+            deg: null,
+            clusters: null,
+            labels: [],
+            x: null,
+            y: null,
+            layout: null,
+          };
+        }
+
         var S = {
           nodes: null,
           flat: null,
           dims: 0,
           n: 0,
           knn: null,
+          vocab: null,
+          df: null,
+          typeValues: [],
+          yearRange: null,
+          annotationsRange: null,
+
+          graphs: {
+            embedding: emptyGraph(),
+            tags: emptyGraph(),
+            authors: emptyGraph(),
+            collections: emptyGraph(),
+            relations: emptyGraph(),
+          },
+          mode: "single", // "single" | "overlay" | "split"
+          primary: "embedding",
+          secondary: null,
+          jaccard: null,
+
+          colorBy: "cluster",
+          sizeBy: "degree",
+
+          // aliases onto S.graphs[S.primary] — kept in sync by useGraph()
           edges: null,
           deg: null,
           clusters: null,
@@ -1383,6 +1637,7 @@
           x: null,
           y: null,
           layout: null,
+
           anim: 0,
           view: { s: 1, tx: 0, ty: 0 },
           hover: -1,
@@ -1393,28 +1648,55 @@
           running: false,
         };
 
+        /* Re-point the flat alias fields at S.graphs[key] so existing interaction
+     code (pick/showDetail/export/double-click BFS/etc.) keeps working unchanged
+     against "whichever graph is primary right now". */
+        function useGraph(key) {
+          var g = S.graphs[key];
+          S.edges = g.edges;
+          S.deg = g.deg;
+          S.clusters = g.clusters;
+          S.labels = g.labels;
+          S.x = g.x;
+          S.y = g.y;
+          S.layout = g.layout;
+        }
+
         var $ = function (id) {
           return document.getElementById(id);
         };
         var canvas = $("cv"),
           ctx = canvas.getContext("2d");
+        var canvas2 = $("cv2"),
+          ctx2 = canvas2.getContext("2d");
+        var stage = $("stage");
 
         function status(msg, busy) {
           $("status").textContent = msg;
           $("status").className = busy ? "busy" : "";
         }
 
-        function resize() {
-          var r = canvas.parentNode.getBoundingClientRect();
+        function sizeCanvas(cv, cx) {
+          var r = cv.getBoundingClientRect();
           var dpr = window.devicePixelRatio || 1;
-          canvas.width = Math.max(1, Math.floor(r.width * dpr));
-          canvas.height = Math.max(1, Math.floor(r.height * dpr));
-          canvas.style.width = r.width + "px";
-          canvas.style.height = r.height + "px";
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          cv.width = Math.max(1, Math.floor(r.width * dpr));
+          cv.height = Math.max(1, Math.floor(r.height * dpr));
+          cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+
+        function resize() {
+          sizeCanvas(canvas, ctx);
+          if (S.mode === "split") sizeCanvas(canvas2, ctx2);
           draw();
         }
         window.addEventListener("resize", resize);
+
+        /* ---------------------------------------------------------- split mode */
+
+        function setupSplitCanvas(on) {
+          stage.classList.toggle("split", !!on);
+          resize();
+        }
 
         /* ------------------------------------------------------------- loading */
 
@@ -1457,9 +1739,27 @@
           S.dims = dims;
           S.n = n;
           S.knn = null;
+          S.vocab = data.vocab || {};
+          S.df = data.df || {};
           S.sel = -1;
           S.focus = null;
           S.activeCluster = -1;
+
+          S.graphs = {
+            embedding: emptyGraph(),
+            tags: emptyGraph(),
+            authors: emptyGraph(),
+            collections: emptyGraph(),
+            relations: emptyGraph(),
+          };
+          S.primary = "embedding";
+          S.secondary = null;
+          S.mode = "single";
+          S.jaccard = null;
+          useGraph(S.primary);
+
+          precomputePaintRanges();
+
           $("meta").textContent =
             n +
             " items · " +
@@ -1472,6 +1772,31 @@
           $("detailResize").style.display = "block";
           positionDetailResize();
           runKNN();
+        }
+
+        function precomputePaintRanges() {
+          var types = {};
+          var minYear = Infinity,
+            maxYear = -Infinity;
+          var minAnn = Infinity,
+            maxAnn = -Infinity;
+          for (var i = 0; i < S.n; i++) {
+            var nd = S.nodes[i];
+            if (nd.type) types[nd.type] = true;
+            var yr = parseInt(nd.year, 10);
+            if (isFinite(yr)) {
+              if (yr < minYear) minYear = yr;
+              if (yr > maxYear) maxYear = yr;
+            }
+            var ann = +nd.annotations || 0;
+            if (ann < minAnn) minAnn = ann;
+            if (ann > maxAnn) maxAnn = ann;
+          }
+          S.typeValues = Object.keys(types).sort();
+          S.yearRange = isFinite(minYear) ? { min: minYear, max: maxYear } : null;
+          S.annotationsRange = isFinite(minAnn)
+            ? { min: minAnn, max: maxAnn }
+            : null;
         }
 
         /* ---------------------------------------------------------------- kNN */
@@ -1499,8 +1824,8 @@
                   ((performance.now() - t0) / 1000).toFixed(1) +
                   "s",
               );
-              initPositions();
-              rebuild();
+              initPositions(S.primary);
+              rebuildGraph(S.primary, { primary: true });
             } else {
               setTimeout(slice, 0);
             }
@@ -1508,71 +1833,125 @@
           setTimeout(slice, 0);
         }
 
-        function initPositions() {
+        function initPositions(key) {
           var p = G.pca2(S.flat, S.n, S.dims, 30);
           G.rescale(p.x, p.y, S.n, 900);
-          S.x = p.x;
-          S.y = p.y;
-          fitView();
+          var g = S.graphs[key];
+          g.x = p.x;
+          g.y = p.y;
+          if (key === S.primary) {
+            S.x = g.x;
+            S.y = g.y;
+            fitView();
+          }
+        }
+
+        /* Build edges for a given source key, purely from that source's own inputs. */
+        function buildEdgesFor(key) {
+          if (key === "embedding") {
+            if (!S.knn) return null;
+            return G.buildEdges(S.knn, S.n, {
+              k: parseInt($("k").value, 10),
+              mutual: $("mutual").checked,
+              minSim: parseFloat($("minsim").value),
+              localScaling: true,
+            });
+          }
+          if (key === "tags") return G.buildTagEdges(S.nodes, S.vocab, S.df, {});
+          if (key === "authors")
+            return G.buildAuthorEdges(S.nodes, S.vocab, S.df, {});
+          if (key === "collections")
+            return G.buildCollectionEdges(S.nodes, S.vocab, S.df, {});
+          if (key === "relations") return G.buildRelationEdges(S.nodes, {});
+          return null;
         }
 
         /* ------------------------------------------------------------ rebuild */
 
-        function rebuild() {
-          if (!S.knn) return;
-          var k = parseInt($("k").value, 10);
-          var res = parseFloat($("res").value);
-          var minSim = parseFloat($("minsim").value);
-          var mutual = $("mutual").checked;
+        /* Rebuild one named graph (edges -> degrees -> louvain -> labels -> layout).
+     opts.primary: also re-point the S.* aliases and refresh the shared UI (legend,
+     stats, layout animation) for it — used for the main/left graph. Secondary
+     graphs (overlay/split) are built quietly without touching that shared UI. */
+        function rebuildGraph(key, opts) {
+          opts = opts || {};
+          if (key === "embedding" && !S.knn) return;
+          var g = S.graphs[key];
+          if (!g.x) initPositions(key);
 
-          S.edges = G.buildEdges(S.knn, S.n, {
-            k: k,
-            mutual: mutual,
-            minSim: minSim,
-            localScaling: true,
-          });
-          S.deg = G.degrees(S.n, S.edges);
-          var cl = G.louvain(S.n, S.edges, res);
-          S.clusters = cl.labels;
+          var res = parseFloat($("res").value);
+          g.edges = buildEdgesFor(key);
+          if (!g.edges) return;
+          g.deg = G.degrees(S.n, g.edges);
+          var cl = G.louvain(S.n, g.edges, res);
+          g.clusters = cl.labels;
           var texts = S.nodes.map(function (nd) {
             return nd.title + " " + (nd.abstract || "").slice(0, 200);
           });
-          S.labels = G.clusterLabels(cl.labels, cl.count, texts, 3);
+          g.labels = G.clusterLabels(cl.labels, cl.count, texts, 3);
+          g.built = true;
 
-          var iso = 0;
-          for (var i = 0; i < S.n; i++) if (S.deg.count[i] === 0) iso++;
-          $("gstats").textContent =
-            S.edges.count +
-            " links · " +
-            cl.count +
-            " clusters · " +
-            iso +
-            " unlinked";
-          renderLegend(cl.count);
-          startLayout();
+          if (opts.primary) {
+            useGraph(key);
+            var iso = 0;
+            for (var i = 0; i < S.n; i++) if (g.deg.count[i] === 0) iso++;
+            $("gstats").textContent =
+              g.edges.count +
+              " links · " +
+              cl.count +
+              " clusters · " +
+              iso +
+              " unlinked";
+            renderLegend(cl.count);
+            startLayout(key);
+          } else {
+            startLayoutFor(key, false);
+          }
+          updateJaccard();
         }
 
-        function startLayout() {
-          cancelAnimationFrame(S.anim);
-          var clusterCount = S.clusters
-            ? Math.max.apply(null, Array.from(S.clusters)) + 1
+        function rebuild() {
+          rebuildGraph(S.primary, { primary: true });
+        }
+
+        function startLayout(key) {
+          startLayoutFor(key, true);
+        }
+
+        function startLayoutFor(key, animate) {
+          var g = S.graphs[key];
+          if (key === S.primary) cancelAnimationFrame(S.anim);
+          var clusterCount = g.clusters
+            ? Math.max.apply(null, Array.from(g.clusters)) + 1
             : 0;
-          S.layout = new G.Layout(S.n, S.edges, S.x, S.y, S.deg.count, {
+          g.layout = new G.Layout(S.n, g.edges, g.x, g.y, g.deg.count, {
             repulsion: parseFloat($("spread").value),
             gravity: parseFloat($("gravity").value),
             attraction: 0.08,
             cell: 60,
-            clusters: S.clusters,
+            clusters: g.clusters,
             clusterCount: clusterCount,
             clusterPull: 0.03,
             clusterSeparation: 320,
           });
+          if (key === S.primary) S.layout = g.layout;
+
           var iters = 0,
             target = 400;
+          if (!animate) {
+            // secondary graphs (overlay/split) settle synchronously — they're not
+            // shown as their own animated pane in overlay mode, and split mode's
+            // panes are still single-graph each so this path is unused there too.
+            while (iters < target) {
+              g.layout.step();
+              iters++;
+            }
+            if (key === S.secondary) draw();
+            return;
+          }
           function tick() {
             var budget = performance.now() + 12;
             while (performance.now() < budget && iters < target) {
-              S.layout.step();
+              g.layout.step();
               iters++;
             }
             draw();
@@ -1638,8 +2017,92 @@
           );
         }
 
+        /* -------------------------------------------------------------- paint */
+
+        function seqColor(t, hue) {
+          // sequential scale: dim->bright along a fixed hue, for year/annotations
+          t = Math.max(0, Math.min(1, t));
+          var light = 22 + t * 48;
+          return "hsl(" + hue + ", 62%, " + light + "%)";
+        }
+
+        var TYPE_PALETTE = [
+          "#4fa3e3",
+          "#e0574a",
+          "#3fb87f",
+          "#e0a83f",
+          "#b47fe0",
+          "#3fc6c6",
+          "#e0568f",
+        ];
+        var READ_COLOR = { 0: "#9aa5c9", 1: "#3fb87f" };
+
+        var COLOR_ENCODINGS = {
+          cluster: function (i) {
+            var c = S.clusters ? S.clusters[i] : 0;
+            return PALETTE[c % PALETTE.length];
+          },
+          degree: function (i) {
+            var d = S.deg ? S.deg.count[i] : 0;
+            var maxD = S.deg ? Math.max(1, Math.max.apply(null, S.deg.count)) : 1;
+            return seqColor(Math.sqrt(d) / Math.sqrt(maxD), 205);
+          },
+          year: function (i) {
+            var yr = parseInt(S.nodes[i].year, 10);
+            if (!isFinite(yr) || !S.yearRange) return MUTED;
+            var span = S.yearRange.max - S.yearRange.min || 1;
+            return seqColor((yr - S.yearRange.min) / span, 28);
+          },
+          type: function (i) {
+            var t = S.nodes[i].type;
+            var idx = S.typeValues.indexOf(t);
+            if (idx < 0) return MUTED;
+            return TYPE_PALETTE[idx % TYPE_PALETTE.length];
+          },
+          read: function (i) {
+            return READ_COLOR[S.nodes[i].read ? 1 : 0];
+          },
+          annotations: function (i) {
+            var a = +S.nodes[i].annotations || 0;
+            if (!S.annotationsRange) return MUTED;
+            var span = S.annotationsRange.max - S.annotationsRange.min || 1;
+            var t = Math.log1p(a - S.annotationsRange.min) / Math.log1p(span);
+            return seqColor(t, 300);
+          },
+        };
+
+        var SIZE_ENCODINGS = {
+          degree: function (i) {
+            var d = S.deg ? S.deg.count[i] : 1;
+            return 2.6 + Math.min(7, Math.sqrt(d) * 1.1);
+          },
+          year: function (i) {
+            var yr = parseInt(S.nodes[i].year, 10);
+            if (!isFinite(yr) || !S.yearRange) return 4;
+            var span = S.yearRange.max - S.yearRange.min || 1;
+            return 2.6 + ((yr - S.yearRange.min) / span) * 7;
+          },
+          annotations: function (i) {
+            var a = +S.nodes[i].annotations || 0;
+            if (!S.annotationsRange) return 4;
+            var span = S.annotationsRange.max - S.annotationsRange.min || 1;
+            var t = Math.log1p(a - S.annotationsRange.min) / Math.log1p(span);
+            return 2.6 + t * 7;
+          },
+          constant: function () {
+            return 5;
+          },
+        };
+
         function colorOf(c) {
+          // legacy signature used by legend/detail chips: color by cluster id directly
           return PALETTE[c % PALETTE.length];
+        }
+        function paintColor(i) {
+          return (COLOR_ENCODINGS[S.colorBy] || COLOR_ENCODINGS.cluster)(i);
+        }
+        function paintSize(i) {
+          return (SIZE_ENCODINGS[S.sizeBy] || SIZE_ENCODINGS.degree)(i);
         }
         function esc(s) {
           return String(s).replace(/[&<>"]/g, function (m) {
@@ -1684,7 +2147,84 @@
 
         /* -------------------------------------------------------------- draw */
 
+        /* Draws one edge set. `warm` selects the amber "layer B" hue used for the
+     secondary source in overlay mode; additive blending (source layer already
+     "lighter") makes edges present in both layers visibly brighten/shift. */
+        function drawEdgeLayer(E, nbrSet, warm) {
+          var cap = 26000;
+          var stride = E.count > cap ? Math.ceil(E.count / cap) : 1;
+          ctx.lineWidth = 1;
+          ctx.globalCompositeOperation = "lighter";
+          for (var e = 0; e < E.count; e++) {
+            var a = E.u[e],
+              b = E.v[e];
+            if (!visible(a) || !visible(b)) continue;
+            var strong = nbrSet && nbrSet.has(a) && nbrSet.has(b);
+            if (stride > 1 && !strong && e % stride !== 0) continue;
+            var w = E.w[e];
+            if (nbrSet)
+              ctx.strokeStyle = strong
+                ? "rgba(255,255,255,0.38)"
+                : "rgba(140,150,170,0.035)";
+            else if (warm)
+              ctx.strokeStyle =
+                "rgba(224,168,63," + (0.03 + w * 0.14).toFixed(3) + ")";
+            else
+              ctx.strokeStyle =
+                "rgba(150,165,200," + (0.035 + w * 0.16).toFixed(3) + ")";
+            ctx.beginPath();
+            ctx.moveTo(sx(a), sy(a));
+            ctx.lineTo(sx(b), sy(b));
+            ctx.stroke();
+          }
+          ctx.globalCompositeOperation = "source-over";
+        }
+
+        /* Renders the currently-active canvas/ctx/graph-alias state (see drawPane
+     below), which is how a single drawing routine serves both the primary view
+     and, in split mode, the secondary pane. */
         function draw() {
+          drawPane();
+          if (S.mode === "split" && S.secondary && S.graphs[S.secondary].built) {
+            drawSecondaryPane();
+          }
+        }
+
+        /* Temporarily re-points canvas/ctx and the S.* graph aliases at the
+     secondary graph/canvas, draws one frame, then restores the primary state.
+     S.view (pan/zoom) is shared, so both panes read/write the same transform. */
+        function drawSecondaryPane() {
+          var savedCanvas = canvas,
+            savedCtx = ctx;
+          var savedEdges = S.edges,
+            savedDeg = S.deg,
+            savedClusters = S.clusters,
+            savedLabels = S.labels,
+            savedX = S.x,
+            savedY = S.y;
+          var g = S.graphs[S.secondary];
+          canvas = canvas2;
+          ctx = ctx2;
+          S.edges = g.edges;
+          S.deg = g.deg;
+          S.clusters = g.clusters;
+          S.labels = g.labels;
+          S.x = g.x;
+          S.y = g.y;
+
+          drawPane();
+
+          canvas = savedCanvas;
+          ctx = savedCtx;
+          S.edges = savedEdges;
+          S.deg = savedDeg;
+          S.clusters = savedClusters;
+          S.labels = savedLabels;
+          S.x = savedX;
+          S.y = savedY;
+        }
+
+        function drawPane() {
           if (!S.x) return;
           var r = canvas.getBoundingClientRect();
           ctx.clearRect(0, 0, r.width, r.height);
@@ -1716,38 +2256,17 @@
 
           // edges — soft additive-style strokes; density itself reads as "strength"
           if (S.drawEdges && S.edges) {
-            var E = S.edges,
-              cap = 26000;
-            var stride = E.count > cap ? Math.ceil(E.count / cap) : 1;
-            ctx.lineWidth = 1;
-            ctx.globalCompositeOperation = "lighter";
-            for (var e = 0; e < E.count; e++) {
-              var a = E.u[e],
-                b = E.v[e];
-              if (!visible(a) || !visible(b)) continue;
-              var strong = nbrSet && nbrSet.has(a) && nbrSet.has(b);
-              if (stride > 1 && !strong && e % stride !== 0) continue;
-              var w = E.w[e];
-              if (nbrSet)
-                ctx.strokeStyle = strong
-                  ? "rgba(255,255,255,0.38)"
-                  : "rgba(140,150,170,0.035)";
-              else
-                ctx.strokeStyle =
-                  "rgba(150,165,200," + (0.035 + w * 0.16).toFixed(3) + ")";
-              ctx.beginPath();
-              ctx.moveTo(sx(a), sy(a));
-              ctx.lineTo(sx(b), sy(b));
-              ctx.stroke();
+            drawEdgeLayer(S.edges, nbrSet, false);
+            if (S.mode === "overlay" && S.secondary) {
+              var sg = S.graphs[S.secondary];
+              if (sg.edges) drawEdgeLayer(sg.edges, nbrSet, true);
             }
-            ctx.globalCompositeOperation = "source-over";
           }
 
           // nodes — soft glow halo + translucent fill + crisp core, connected-papers style
           for (var i = 0; i < S.n; i++) {
             var vis = visible(i);
-            var rad =
-              2.6 + Math.min(7, Math.sqrt(S.deg ? S.deg.count[i] : 1) * 1.1);
+            var rad = paintSize(i);
             if (nbrSet && i !== hl && nbrSim && nbrSim.has(i)) {
               // normalize against this node's own neighbour spread, since raw cosine
               // similarities for related papers usually sit in a narrow high band
@@ -1759,7 +2278,7 @@
             var dim = (nbrSet && !nbrSet.has(i)) || !vis;
             var px = sx(i),
               py = sy(i);
-            var col = dim ? MUTED : colorOf(S.clusters ? S.clusters[i] : 0);
+            var col = dim ? MUTED : paintColor(i);
 
             if (!dim) {
               var glowR = rad * 3.2;
@@ -1845,12 +2364,16 @@
         /* --------------------------------------------------------- interaction */
 
         function pick(mx, my) {
+          return pickAgainst(S.x, S.y, mx, my);
+        }
+
+        function pickAgainst(xArr, yArr, mx, my) {
           var best = -1,
             bd = 18 * 18;
           for (var i = 0; i < S.n; i++) {
             if (!visible(i)) continue;
-            var dx = sx(i) - mx,
-              dy = sy(i) - my,
+            var dx = xArr[i] * S.view.s + S.view.tx - mx,
+              dy = yArr[i] * S.view.s + S.view.ty - my,
               d = dx * dx + dy * dy;
             if (d < bd) {
               bd = d;
@@ -1951,6 +2474,73 @@
         });
 
         canvas.addEventListener(
+          "wheel",
+          function (ev) {
+            ev.preventDefault();
+            var f = Math.exp(-ev.deltaY * 0.0015);
+            var mx = ev.offsetX,
+              my = ev.offsetY;
+            S.view.tx = mx - (mx - S.view.tx) * f;
+            S.view.ty = my - (my - S.view.ty) * f;
+            S.view.s *= f;
+            draw();
+          },
+          { passive: false },
+        );
+
+        /* ----------------------------------------------------- split pane two */
+
+        /* Mirrors the primary canvas's pan/zoom/pick/select handlers for canvas2
+     (split mode's right pane). S.view is shared (synced pan/zoom); picking uses
+     the secondary graph's own node positions; hover/select write to the same
+     shared S.hover/S.sel so highlighting is linked across both panes. */
+        var drag2 = null,
+          lastDragMoved2 = false;
+        canvas2.addEventListener("mousedown", function (ev) {
+          drag2 = {
+            x: ev.offsetX,
+            y: ev.offsetY,
+            tx: S.view.tx,
+            ty: S.view.ty,
+            moved: false,
+          };
+        });
+        window.addEventListener("mouseup", function () {
+          lastDragMoved2 = !!(drag2 && drag2.moved);
+          drag2 = null;
+        });
+        canvas2.addEventListener("mousemove", function (ev) {
+          if (drag2) {
+            var dx = ev.offsetX - drag2.x,
+              dy = ev.offsetY - drag2.y;
+            if (Math.abs(dx) + Math.abs(dy) > 3) drag2.moved = true;
+            S.view.tx = drag2.tx + dx;
+            S.view.ty = drag2.ty + dy;
+            draw();
+            return;
+          }
+          var g = S.secondary && S.graphs[S.secondary];
+          if (!g || !g.x) return;
+          var h = pickAgainst(g.x, g.y, ev.offsetX, ev.offsetY);
+          if (h !== S.hover) {
+            S.hover = h;
+            canvas2.style.cursor = h >= 0 ? "pointer" : "grab";
+            if (S.sel < 0) draw();
+          }
+        });
+        canvas2.addEventListener("click", function (ev) {
+          if (lastDragMoved2) {
+            lastDragMoved2 = false;
+            return;
+          }
+          var g = S.secondary && S.graphs[S.secondary];
+          if (!g || !g.x) return;
+          var h = pickAgainst(g.x, g.y, ev.offsetX, ev.offsetY);
+          S.sel = h;
+          showDetail(h);
+          draw();
+        });
+        canvas2.addEventListener(
           "wheel",
           function (ev) {
             ev.preventDefault();
@@ -2097,6 +2687,84 @@
           S.drawEdges = $("edgetoggle").checked;
           draw();
         };
+
+        /* ------------------------------------------------------- graph source */
+
+        function updateLinkingVisibility() {
+          var show = S.primary === "embedding" || S.primary === "tags";
+          $("linkingGrp").style.display = show ? "block" : "none";
+          $("mutual").parentNode.style.display =
+            S.primary === "embedding" ? "flex" : "none";
+        }
+
+        $("edgesource").onchange = function () {
+          if (S.running || !S.flat) return;
+          S.primary = $("edgesource").value;
+          updateLinkingVisibility();
+          if (S.primary === "embedding" && !S.knn) {
+            runKNN();
+            return;
+          }
+          rebuildGraph(S.primary, { primary: true });
+        };
+
+        /* ----------------------------------------------------------- paint ui */
+
+        $("colorby").onchange = function () {
+          S.colorBy = $("colorby").value;
+          draw();
+        };
+        $("sizeby").onchange = function () {
+          S.sizeBy = $("sizeby").value;
+          draw();
+        };
+
+        /* --------------------------------------------------------- comparison */
+
+        function updateJaccard() {
+          if (S.mode === "single" || !S.secondary) {
+            S.jaccard = null;
+            $("agreement").textContent = "";
+            return;
+          }
+          var a = S.graphs[S.primary],
+            b = S.graphs[S.secondary];
+          if (!a.edges || !b.edges) return;
+          S.jaccard = G.edgeJaccard(a.edges, b.edges, S.n);
+          $("agreement").textContent =
+            Math.round(S.jaccard * 100) +
+            "% of links agree between " +
+            SOURCE_LABEL[S.primary] +
+            " and " +
+            SOURCE_LABEL[S.secondary] +
+            ".";
+        }
+
+        $("comparemode").onchange = function () {
+          S.mode = $("comparemode").value;
+          var showSecond = S.mode !== "single";
+          $("secondsourceRow").style.display = showSecond ? "block" : "none";
+          $("secondsource").style.display = showSecond ? "block" : "none";
+          setupSplitCanvas(S.mode === "split");
+          if (showSecond && S.secondary) ensureSecondaryBuilt();
+          draw();
+        };
+
+        $("secondsource").onchange = function () {
+          if (S.running || !S.flat) return;
+          S.secondary = $("secondsource").value;
+          ensureSecondaryBuilt();
+        };
+
+        function ensureSecondaryBuilt() {
+          if (!S.secondary) return;
+          if (S.secondary === "embedding" && !S.knn) {
+            runKNN(); // will not auto-build secondary; re-trigger once knn is ready
+            return;
+          }
+          rebuildGraph(S.secondary, { primary: false });
+          draw();
+        }
         $("clearfocus").onclick = function () {
           S.focus = null;
           $("clearfocus").style.display = "none";
@@ -2164,6 +2832,9 @@
               mutual: $("mutual").checked,
               minSim: +$("minsim").value,
               dims: +$("kdims").value,
+              edgeSource: S.primary,
+              colorBy: S.colorBy,
+              sizeBy: S.sizeBy,
             },
             nodes: [],
           };
@@ -2185,6 +2856,7 @@
           a.click();
         };
 
+        updateLinkingVisibility();
         resize();
         status("Drop graph_input.json anywhere on this window to begin.");
       })();
