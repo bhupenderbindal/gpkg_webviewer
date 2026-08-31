@@ -457,8 +457,22 @@
       }
       .nbt {
         overflow: hidden;
+        min-width: 0;
+      }
+      .nbt .nbtitle {
+        display: block;
+        overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      .nbt .nbmeta {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 10px;
+        color: var(--ink-2);
+        margin-top: 1px;
       }
 
       #clearfocus {
@@ -2608,7 +2622,16 @@
               (s * 100).toFixed(0) +
               "</span>" +
               '<span class="nbt">' +
+              '<span class="nbtitle">' +
               esc(S.nodes[j].title) +
+              "</span>" +
+              '<span class="nbmeta">' +
+              esc(
+                [S.nodes[j].author, S.nodes[j].year]
+                  .filter(Boolean)
+                  .join(" · "),
+              ) +
+              "</span>" +
               "</span></button>";
           }
           d.innerHTML =
