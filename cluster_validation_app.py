@@ -10,209 +10,35 @@ Usage (in a notebook cell)::
     from cluster_validation_app import launch
     launch()
 
-All logic lives here so the notebook can stay a single hidden line and read
-as a GUI app. Dependencies assumed available: numpy, pandas, matplotlib,
+Plotting and data loading live in ``cluster_core`` (shared with the
+Streamlit front-end, ``streamlit_app.py``); this module is only the
+ipywidgets UI. Dependencies assumed available: numpy, pandas, matplotlib,
 seaborn, ipywidgets, geopandas (for .gpkg / .geojson / .shp / ...).
 """
 
 from __future__ import annotations
 
-import io
-import math
 import re
 import tempfile
 from pathlib import Path
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import seaborn as sns
 import ipywidgets as widgets
 from IPython.display import clear_output, display
 
-try:
-    import geopandas as gpd
-except ImportError:  # pragma: no cover - geopandas is expected in the Jupyter env
-    gpd = None
-
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-EXCLUDE_COLS = {"field_1", "TOPOI_ID", "geometry"}
-OUT_DIR = Path("cluster_validation_plots")
-SCALE_OPTIONS = ["linear", "log", "symlog"]
-
-# Formats read straight through pandas; everything else goes via geopandas.
-_TABULAR_EXT = {".csv"}
-_GEO_EXT = {
-    ".gpkg",
-    ".geojson",
-    ".json",
-    ".shp",
-    ".zip",
-    ".gml",
-    ".kml",
-    ".fgb",
-    ".parquet",
-    ".gpq",
-}
-SUPPORTED_EXT = sorted(_TABULAR_EXT | _GEO_EXT)
-UPLOAD_ACCEPT = ",".join(SUPPORTED_EXT)
-DEFAULTS = {
-    "cluster_col": ["depth_300"],
-    "boxplot": [
-        "total_buildings",
-        "total_vol",
-        "settlement_perimeter",
-        "compactness",
-        "built_up_area",
-        "agri_ratio",
-    ],
-    "pct": ["richness"],
-    "sum": ["built_up_area"],
-}
-
-
-# ---------------------------------------------------------------------------
-# Core plotting  (port of cluster_validation_browser)
-# ---------------------------------------------------------------------------
-def clean_string(s: str) -> str:
-    s = re.sub(r"[_-]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip().lower()
-    return s.capitalize()
-
-
-def cluster_validation(
-    gdf,
-    boxplot_columns,
-    percentage_plot_columns,
-    sum_plot_columns,
-    bin_to_label,
-    cluster_col,
-    if_random=False,
-    boxplot_yscale=None,
-    boxplot_color="#7c7c0a",
-    sumplot_color="#e7969c",
-):
-    """Return a list of ``(title, matplotlib.figure.Figure)`` tuples."""
-    if boxplot_yscale is None:
-        boxplot_yscale = {}
-
-    figures = []
-
-    if if_random:
-        num_cl = int(np.max(gdf["cluster_num"]))
-        cluster_col = "cluster_num_rand"
-        gdf = gdf.copy()
-        gdf[cluster_col] = np.random.randint(0, num_cl, gdf.shape[0])
-
-    plt.style.use("default")
-
-    # -- percentage stacked-bar plots ------------------------------------
-    for col_x in percentage_plot_columns:
-        count_df = pd.crosstab(gdf[cluster_col], gdf[col_x])
-        pct_tbl = count_df.div(count_df.sum(axis=1), axis=0)
-        category_count_dict = {}
-        for r in pct_tbl.transpose().iterrows():
-            category_count_dict[r[0]] = list(r[1])
-        species = tuple(count_df.index)
-        width = 0.6
-        category_ = list(gdf[col_x])
-        bin_to_label_use = bin_to_label or dict(zip(category_, category_))
-
-        with mpl.rc_context({"font.size": 4, "font.weight": 2}):
-            fig, ax = plt.subplots(figsize=(7, 4))
-            bottom = np.zeros(len(species))
-            bin_colors = sns.color_palette("tab20", len(category_count_dict))
-            for category_, category_count in category_count_dict.items():
-                p = ax.bar(
-                    species,
-                    category_count,
-                    width,
-                    label=bin_to_label_use.get(category_, str(category_)),
-                    bottom=bottom,
-                    color=bin_colors[category_ - 1],
-                )
-                bottom += np.array(category_count)
-                ax.bar_label(p, label_type="center")
-            ax.set_title(f"{clean_string(col_x)} distribution in clusters")
-            ax.legend(loc="upper left", bbox_to_anchor=(1.02, 1), borderaxespad=0.0)
-            fig.tight_layout(rect=[0, 0, 0.80, 1])
-            figures.append((f"Percentage \u2014 {col_x}", fig))
-
-    # -- boxplots ------------------------------------------------------------
-    valid_bp = [c for c in boxplot_columns if c in gdf.columns]
-    if valid_bp:
-        cols = 2
-        rows = math.ceil(len(valid_bp) / cols)
-        fig, axs = plt.subplots(rows, cols, figsize=(15, 10), layout="constrained")
-        axs_flat = np.array(axs).flatten()
-        if rows * cols - len(valid_bp) == 1:
-            axs_flat[-1].axis("off")
-
-        for ax, col in zip(axs_flat, valid_bp):
-            scale = boxplot_yscale.get(col, "linear")
-            sns.boxplot(
-                x=cluster_col,
-                y=col,
-                orient="x",
-                width=0.5,
-                data=gdf,
-                ax=ax,
-                medianprops={"color": "r", "linewidth": 1},
-                showmeans=True,
-                meanprops={"markerfacecolor": "none"},
-                color=boxplot_color,
-            )
-            lbl = clean_string(col)
-            if scale != "linear":
-                ax.set_yscale(scale)
-                lbl += f" ({scale} scale)"
-            ax.set_ylabel(lbl)
-            ylo, yhi = ax.get_ylim()
-            yrange = yhi - ylo if (yhi - ylo) != 0 else 1.0
-            for i, cat in enumerate(np.sort(gdf[cluster_col].unique())):
-                count = len(gdf[gdf[cluster_col] == cat])
-                ax.text(i, yhi + yrange * 0.05, str(count), ha="center", size="x-small")
-            ax.set_ylim(ylo, yhi + yrange * 0.25)
-
-        figures.append(("Boxplots \u2014 cluster properties", fig))
-
-    # -- sum bar plots -----------------------------------------------------
-    valid_sp = [c for c in sum_plot_columns if c in gdf.columns]
-    if valid_sp:
-        cols = 2
-        rows = math.ceil(len(valid_sp) / cols)
-        fig, axs = plt.subplots(rows, cols, figsize=(15, 10), layout="constrained")
-        axs_flat = np.array(axs).flatten()
-        if rows * cols - len(valid_sp) == 1:
-            axs_flat[-1].axis("off")
-
-        for ax, col in zip(axs_flat, valid_sp):
-            sns.barplot(
-                gdf,
-                y=cluster_col,
-                x=col,
-                estimator="sum",
-                errorbar=None,
-                orient="y",
-                color=sumplot_color,
-                ax=ax,
-            )
-            gp = gdf.groupby(cluster_col).agg(
-                **{f"sum_{col}": (col, "sum"), f"mean_{col}": (col, "mean")}
-            )
-            ax.bar_label(
-                ax.containers[0],
-                labels=[f"{round(x, 2)} " for x in gp[f"mean_{col}"]],
-                fontsize=5,
-            )
-            ax.set_xlabel(f"total {clean_string(col)}")
-
-        figures.append(("Sum bar plots \u2014 cluster properties", fig))
-
-    return figures
+from cluster_core import (  # noqa: F401 - re-exported for existing imports
+    DEFAULTS,
+    EXCLUDE_COLS,
+    OUT_DIR,
+    SCALE_OPTIONS,
+    SUPPORTED_EXT,
+    UPLOAD_ACCEPT,
+    cluster_validation,
+    gpd,
+    list_layers,
+    read_geodata,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -234,97 +60,6 @@ def _upload_item(file_upload):
         return None
     item = list(val.values())[0] if isinstance(val, dict) else val[0]
     return item["name"], bytes(item["content"])
-
-
-def _require_geopandas(ext):
-    if gpd is None:
-        raise RuntimeError(
-            f"Reading '{ext}' needs geopandas. Install it (pip install geopandas) "
-            "or load a .csv instead."
-        )
-
-
-# Encodings tried, in order, when a CSV is not valid UTF-8.
-_CSV_ENCODINGS = ("utf-8", "utf-8-sig", "cp1252", "latin-1")
-
-
-def _read_csv_any_encoding(filepath_or_buffer):
-    """``pd.read_csv`` with a fallback chain for non-UTF-8 files."""
-    seekable = hasattr(filepath_or_buffer, "seek")
-    for enc in _CSV_ENCODINGS:
-        try:
-            if seekable:
-                filepath_or_buffer.seek(0)
-            return pd.read_csv(filepath_or_buffer, encoding=enc)
-        except (UnicodeDecodeError, UnicodeError):
-            continue
-    # last resort: replace undecodable bytes so the load still succeeds
-    if seekable:
-        filepath_or_buffer.seek(0)
-    return pd.read_csv(
-        filepath_or_buffer, encoding="latin-1", encoding_errors="replace"
-    )
-
-
-def list_layers(source):
-    """Return the layer names in a multi-layer source (e.g. GeoPackage), else []."""
-    ext = Path(str(source)).suffix.lower()
-    if ext not in _GEO_EXT or gpd is None:
-        return []
-    try:
-        import fiona  # geopandas' engine; ships with it
-
-        return list(fiona.listlayers(source))
-    except Exception:  # noqa: BLE001 - single-layer formats / older stacks
-        try:
-            return list(gpd.list_layers(source)["name"])
-        except Exception:  # noqa: BLE001
-            return []
-
-
-def read_geodata(source, layer=None):
-    """Load *source* (path or bytes-with-name tuple) into a (Geo)DataFrame.
-
-    Supports .csv via pandas and .gpkg/.geojson/.shp/.zip/.parquet/... via
-    geopandas. For byte uploads the content is written to a temp file first
-    because most geo drivers cannot read from an in-memory buffer.
-    """
-    if isinstance(source, tuple):  # (name, data) from an upload widget
-        name, data = source
-        ext = Path(name).suffix.lower()
-        if ext in _TABULAR_EXT:
-            return _read_csv_any_encoding(io.BytesIO(data))
-        _require_geopandas(ext)
-        with tempfile.NamedTemporaryFile(suffix=ext or ".dat", delete=False) as tmp:
-            tmp.write(data)
-            tmp_path = tmp.name
-        try:
-            return read_geodata(tmp_path, layer=layer)
-        finally:
-            try:
-                Path(tmp_path).unlink()
-            except OSError:
-                pass
-
-    path = str(source)
-    ext = Path(path).suffix.lower()
-    if ext in _TABULAR_EXT:
-        return _read_csv_any_encoding(path)
-    if ext in {".parquet", ".gpq"}:
-        _require_geopandas(ext)
-        return gpd.read_parquet(path)
-    if ext in _GEO_EXT:
-        _require_geopandas(ext)
-        return gpd.read_file(path, layer=layer) if layer else gpd.read_file(path)
-
-    # Unknown extension: try geopandas first (handles .gdb, .tab, no-ext dirs,
-    # OGR connection strings), then fall back to a CSV read.
-    if gpd is not None:
-        try:
-            return gpd.read_file(path, layer=layer) if layer else gpd.read_file(path)
-        except Exception:  # noqa: BLE001
-            pass
-    return _read_csv_any_encoding(path)
 
 
 def build_cluster_validation_app():
@@ -357,6 +92,9 @@ def build_cluster_validation_app():
         "<i>No file loaded</i> &nbsp;\u2014&nbsp; "
         f"<small>accepts {', '.join(SUPPORTED_EXT)}</small>"
     )
+    preview_out = widgets.Output(
+        layout=widgets.Layout(max_height="420px", overflow="auto")
+    )
 
     # -- 2: config ------------------------------------------------------
     cluster_dd = widgets.Dropdown(
@@ -370,6 +108,19 @@ def build_cluster_validation_app():
     boxplot_color = widgets.ColorPicker(
         value="#7c7c0a", description="Boxplot colour",
         style={"description_width": "initial"},
+    )
+    hue_dd = widgets.Dropdown(
+        description="Boxplot hue",
+        options=[("(none)", None)],
+        value=None,
+        style={"description_width": "initial"},
+        layout=widgets.Layout(width="320px"),
+    )
+    rotation_sl = widgets.IntSlider(
+        value=0, min=-90, max=90, step=5,
+        description="X-label rotation (°)",
+        style={"description_width": "initial"},
+        layout=widgets.Layout(width="360px"),
     )
     sum_color = widgets.ColorPicker(
         value="#e7969c", description="Sum plot colour",
@@ -424,9 +175,17 @@ def build_cluster_validation_app():
             (c for c in DEFAULTS["cluster_col"] if c in all_cols),
             all_cols[0] if all_cols else None,
         )
-        for ms, key in ((boxplot_ms, "boxplot"), (pct_ms, "pct"), (sum_ms, "sum")):
-            ms.options = numeric_cols
-            ms.value = tuple(c for c in DEFAULTS[key] if c in numeric_cols)
+        # Percentage plots count categories, so string columns are valid there.
+        category_cols = [c for c in all_cols if c not in EXCLUDE_COLS]
+        for ms, key, opts in (
+            (boxplot_ms, "boxplot", numeric_cols),
+            (pct_ms, "pct", category_cols),
+            (sum_ms, "sum", numeric_cols),
+        ):
+            ms.options = opts
+            ms.value = tuple(c for c in DEFAULTS[key] if c in opts)
+        hue_dd.options = [("(none)", None)] + [(c, c) for c in category_cols]
+        hue_dd.value = next((c for c in DEFAULTS["hue"] if c in category_cols), None)
         rebuild_scales()
         run_btn.disabled = False
         geo_note = ""
@@ -441,6 +200,19 @@ def build_cluster_validation_app():
             f"<span style='color:#16a34a'>\u2713 Loaded {len(gdf)} rows, "
             f"{len(all_cols)} columns</span>{geo_note}"
         )
+        _show_preview(gdf)
+
+    def _show_preview(gdf):
+        """Render column dtypes and the first 5 rows below the load status."""
+        with preview_out:
+            clear_output(wait=True)
+            dtypes = pd.DataFrame(
+                {"column": gdf.columns, "dtype": gdf.dtypes.astype(str).values}
+            )
+            display(widgets.HTML("<b>Columns &amp; dtypes</b>"))
+            display(dtypes.style.hide(axis="index"))
+            display(widgets.HTML("<b>First 5 rows</b>"))
+            display(pd.DataFrame(gdf.head(5)))
 
     def _current_source():
         """Return the active source: an upload tuple, a path string, or None."""
@@ -488,6 +260,7 @@ def build_cluster_validation_app():
 
     def _on_load(_):
         load_status.value = "<i>Loading\u2026</i>"
+        preview_out.clear_output()
         try:
             src = _current_source()
             if src is None:
@@ -516,6 +289,27 @@ def build_cluster_validation_app():
             print(f"  pct_cols:     {list(pct_ms.value)}")
             print(f"  sum_cols:     {list(sum_ms.value)}")
             print(f"  yscale map:   {scale_map}")
+            print(f"  boxplot hue:  {hue_dd.value}")
+            if hue_dd.value is not None and gdf[hue_dd.value].nunique() > 20:
+                print(
+                    f"  note: hue '{hue_dd.value}' has "
+                    f"{gdf[hue_dd.value].nunique()} distinct values — "
+                    "boxplots will be crowded; pick a categorical column"
+                )
+            for label, ms in (
+                ("boxplot", boxplot_ms),
+                ("percentage plot", pct_ms),
+                ("sum plot", sum_ms),
+            ):
+                if not ms.value:
+                    print(f"  note: no {label} columns selected \u2014 skipping")
+            for c in pct_ms.value:
+                n = gdf[c].nunique()
+                if n > 20:
+                    print(
+                        f"  note: '{c}' has {n} distinct values \u2014 percentage "
+                        "plot will be crowded; pick a categorical column"
+                    )
             print("\u2500" * 50)
             try:
                 figures = cluster_validation(
@@ -529,6 +323,8 @@ def build_cluster_validation_app():
                     boxplot_yscale=scale_map,
                     boxplot_color=boxplot_color.value,
                     sumplot_color=sum_color.value,
+                    boxplot_hue=hue_dd.value,
+                    xlabel_rotation=rotation_sl.value,
                 )
             except Exception as e:  # noqa: BLE001
                 print(f"ERROR: {e}")
@@ -557,6 +353,7 @@ def build_cluster_validation_app():
         path_box,
         layer_dd,
         load_status,
+        preview_out,
     )
     cols_row = widgets.HBox(
         [
@@ -570,7 +367,8 @@ def build_cluster_validation_app():
         cluster_dd,
         cols_row,
         scale_container,
-        widgets.HBox([boxplot_color, sum_color]),
+        widgets.HBox([boxplot_color, hue_dd, sum_color]),
+        rotation_sl,
         random_cb,
         save_cb,
     )
@@ -582,5 +380,5 @@ def build_cluster_validation_app():
 def launch():
     """Build the app and display it."""
     app = build_cluster_validation_app()
-    display(app)
+    # display(app)
     return app
